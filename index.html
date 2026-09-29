@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AniList Plan to Watch Randomizer</title>
+  <title>AniList PTW Randomizer</title>
   <style>
     * {
       box-sizing: border-box;
@@ -176,24 +176,30 @@
 </div>
 
 <script>
-  let fullList = [];
+  let masterList = [];
   let remainingPool = [];
   let isListLoaded = false;
 
-  // Pressing 'Enter' key behavior
+  function shuffle(array) {
+    let arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       const inputEl = document.getElementById('userInput');
       
-      // If list isn't loaded yet and user presses enter inside the box -> Load list
       if (!isListLoaded && document.activeElement === inputEl) {
         e.preventDefault();
         fetchList();
       } else {
-        // If list is already loaded, pressing enter triggers next anime (even from input box)
-        if (fullList.length > 0) {
+        if (masterList.length > 0) {
           e.preventDefault();
-          inputEl.blur(); // Remove cursor focus from input
+          inputEl.blur();
           pickNext();
         }
       }
@@ -205,7 +211,7 @@
     let input = inputEl.value.trim();
     if (!input) return alert('Please enter a username or profile URL.');
 
-    inputEl.blur(); // Remove focus from text box
+    inputEl.blur();
 
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
@@ -254,19 +260,31 @@
       }
 
       const lists = result.data.MediaListCollection.lists;
-      fullList = [];
+      const rawEntries = [];
 
       lists.forEach(list => {
-        list.entries.forEach(entry => fullList.push(entry.media));
+        list.entries.forEach(entry => rawEntries.push(entry.media));
       });
 
-      if (fullList.length === 0) {
+      // Deduplicate by media ID so no exact anime appears twice
+      const seenIds = new Set();
+      masterList = [];
+      
+      rawEntries.forEach(item => {
+        if (!seenIds.has(item.id)) {
+          seenIds.add(item.id);
+          masterList.push(item);
+        }
+      });
+
+      if (masterList.length === 0) {
         statusEl.innerText = 'No anime found in Plan to Watch list.';
         isListLoaded = false;
         return;
       }
 
-      remainingPool = [...fullList];
+      // Create a shuffled copy of the pool
+      remainingPool = shuffle(masterList);
       isListLoaded = true;
       document.getElementById('animeCard').style.display = 'flex';
 
@@ -281,21 +299,20 @@
     const noRepeat = document.getElementById('noRepeat').checked;
     const statusEl = document.getElementById('statusText');
 
-    let pool = noRepeat ? remainingPool : fullList;
-
-    if (noRepeat && remainingPool.length === 0) {
-      remainingPool = [...fullList];
-      pool = remainingPool;
-    }
-
-    if (pool.length === 0) return;
-
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const anime = pool[randomIndex];
+    let anime;
 
     if (noRepeat) {
-      remainingPool.splice(randomIndex, 1);
+      if (remainingPool.length === 0) {
+        statusEl.innerText = 'Finished all items! Reshuffling pool...';
+        remainingPool = shuffle(masterList);
+      }
+      anime = remainingPool.pop();
+    } else {
+      const randomIndex = Math.floor(Math.random() * masterList.length);
+      anime = masterList[randomIndex];
     }
+
+    if (!anime) return;
 
     const title = anime.title.english || anime.title.romaji;
     document.getElementById('animeTitle').innerText = title;
@@ -309,9 +326,9 @@
     document.getElementById('animeDetails').innerText = meta.join(' • ');
 
     if (noRepeat) {
-      statusEl.innerText = `Remaining in pool: ${remainingPool.length} / ${fullList.length}`;
+      statusEl.innerText = `Remaining in pool: ${remainingPool.length} / ${masterList.length}`;
     } else {
-      statusEl.innerText = `Total in list: ${fullList.length}`;
+      statusEl.innerText = `Total in list: ${masterList.length}`;
     }
   }
 </script>

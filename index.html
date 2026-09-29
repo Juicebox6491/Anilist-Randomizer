@@ -169,7 +169,7 @@
     </a>
     <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
     <div id="animeDetails" class="details"></div>
-    <button class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
+    <button id="nextBtn" class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
   </div>
 
   <p class="hint">Press <strong>Enter</strong> key anywhere outside the input box for the next anime!</p>
@@ -178,18 +178,22 @@
 <script>
   let fullList = [];
   let remainingPool = [];
+  let isListLoaded = false;
 
-  document.getElementById('userInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      fetchList();
-    }
-  });
-
+  // Pressing 'Enter' key behavior
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-      if (document.activeElement.id !== 'userInput') {
-        if (remainingPool.length > 0 || fullList.length > 0) {
+      const inputEl = document.getElementById('userInput');
+      
+      // If list isn't loaded yet and user presses enter inside the box -> Load list
+      if (!isListLoaded && document.activeElement === inputEl) {
+        e.preventDefault();
+        fetchList();
+      } else {
+        // If list is already loaded, pressing enter triggers next anime (even from input box)
+        if (fullList.length > 0) {
+          e.preventDefault();
+          inputEl.blur(); // Remove cursor focus from input
           pickNext();
         }
       }
@@ -197,8 +201,11 @@
   });
 
   async function fetchList() {
-    let input = document.getElementById('userInput').value.trim();
+    const inputEl = document.getElementById('userInput');
+    let input = inputEl.value.trim();
     if (!input) return alert('Please enter a username or profile URL.');
+
+    inputEl.blur(); // Remove focus from text box
 
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
@@ -242,6 +249,7 @@
 
       if (result.errors) {
         statusEl.innerText = 'User not found or list is private.';
+        isListLoaded = false;
         return;
       }
 
@@ -254,15 +262,18 @@
 
       if (fullList.length === 0) {
         statusEl.innerText = 'No anime found in Plan to Watch list.';
+        isListLoaded = false;
         return;
       }
 
       remainingPool = [...fullList];
+      isListLoaded = true;
       document.getElementById('animeCard').style.display = 'flex';
 
       pickNext();
     } catch (err) {
       statusEl.innerText = 'Error loading list. Check internet connection.';
+      isListLoaded = false;
     }
   }
 

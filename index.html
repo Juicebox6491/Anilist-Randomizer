@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AniList Plan to Watch Randomizer</title>
+  <title>Anime PTW Randomizer (AniList & MAL)</title>
   <style>
     * {
       box-sizing: border-box;
@@ -33,6 +33,20 @@
       color: #edf1f5;
       font-size: 1.6rem;
       margin-bottom: 1.2rem;
+    }
+    .platform-selector {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #edf1f5;
+    }
+    .platform-selector label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
     }
     .input-group {
       display: flex;
@@ -149,8 +163,13 @@
 <body>
 
 <div class="container">
-  <h1>AniList PTW Randomizer</h1>
+  <h1>Anime PTW Randomizer</h1>
   
+  <div class="platform-selector">
+    <label><input type="radio" name="platform" value="anilist" checked> AniList</label>
+    <label><input type="radio" name="platform" value="mal"> MyAnimeList</label>
+  </div>
+
   <div class="input-group">
     <input type="text" id="userInput" placeholder="Enter username or profile URL" value="juicebox6491" />
     <button onclick="fetchList()">Load</button>
@@ -179,7 +198,6 @@
   let fullList = [];
   let remainingPool = [];
 
-  // Pressing 'Enter' inside the text input loads user list
   document.getElementById('userInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -187,10 +205,8 @@
     }
   });
 
-  // Global 'Enter' key listener to pick next anime
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-      // Avoid triggering when focused inside the input field
       if (document.activeElement.id !== 'userInput') {
         if (remainingPool.length > 0 || fullList.length > 0) {
           pickNext();
@@ -203,28 +219,33 @@
     let input = document.getElementById('userInput').value.trim();
     if (!input) return alert('Please enter a username or profile URL.');
 
-    // Extract username if full URL is passed
-    const match = input.match(/anilist\.co\/user\/([^/]+)/);
-    const username = match ? match[1] : input;
-
+    const platform = document.querySelector('input[name="platform"]:checked').value;
     const statusEl = document.getElementById('statusText');
-    statusEl.innerText = `Fetching 'Planning' list for ${username}...`;
     document.getElementById('animeCard').style.display = 'none';
 
+    if (platform === 'anilist') {
+      const match = input.match(/anilist\.co\/user\/([^/]+)/);
+      const username = match ? match[1] : input;
+      statusEl.innerText = `Fetching AniList 'Planning' list for ${username}...`;
+      await fetchAniList(username);
+    } else {
+      const match = input.match(/myanimelist\.net\/profile\/([^/]+)/);
+      const username = match ? match[1] : input;
+      statusEl.innerText = `Fetching MyAnimeList 'Plan to Watch' for ${username}...`;
+      await fetchMAL(username);
+    }
+  }
+
+  async function fetchAniList(username) {
+    const statusEl = document.getElementById('statusText');
     const query = `
       query ($username: String) {
         MediaListCollection(userName: $username, type: ANIME, status: PLANNING) {
           lists {
             entries {
               media {
-                id
-                title {
-                  english
-                  romaji
-                }
-                coverImage {
-                  extraLarge
-                }
+                title { english romaji }
+                coverImage { extraLarge }
                 siteUrl
                 episodes
                 averageScore
@@ -241,7 +262,6 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query, variables: { username } })
       });
-
       const result = await response.json();
 
       if (result.errors) {
@@ -249,26 +269,61 @@
         return;
       }
 
-      const lists = result.data.MediaListCollection.lists;
       fullList = [];
-
-      lists.forEach(list => {
-        list.entries.forEach(entry => fullList.push(entry.media));
+      result.data.MediaListCollection.lists.forEach(list => {
+        list.entries.forEach(entry => {
+          fullList.push({
+            title: entry.media.title.english || entry.media.title.romaji,
+            cover: entry.media.coverImage.extraLarge,
+            url: entry.media.siteUrl,
+            episodes: entry.media.episodes,
+            score: entry.media.averageScore ? `${entry.media.averageScore}%` : null
+          });
+        });
       });
 
-      if (fullList.length === 0) {
-        statusEl.innerText = 'No anime found in Plan to Watch list.';
+      processLoadedList(username);
+    } catch (err) {
+      statusEl.innerText = 'Error loading list. Check connection.';
+    }
+  }
+
+  async function fetchMAL(username) {
+    const statusEl = document.getElementById('statusText');
+    try {
+      // Jikan API for MAL user animelist (status 6 = Plan to Watch)
+      const response = await fetch(`https://api.jikan.moe/v4/users/${username}/userlist/anime/plan_to_watch`);
+      
+      if (!response.ok) {
+        statusEl.innerText = 'MAL user not found or list is private.';
         return;
       }
 
-      remainingPool = [...fullList];
-      statusEl.innerText = `Loaded ${fullList.length} anime for ${username}!`;
-      document.getElementById('animeCard').style.display = 'flex';
+      const result = await response.json();
+      fullList = result.data.map(item => ({
+        title: item.anime.title,
+        cover: item.anime.images.jpg.large_image_url,
+        url: item.anime.url,
+        episodes: item.anime.episodes,
+        score: item.score ? `${item.score}/10` : null
+      }));
 
-      pickNext();
+      processLoadedList(username);
     } catch (err) {
-      statusEl.innerText = 'Error loading list. Check internet connection.';
+      statusEl.innerText = 'Error loading MAL list. Try again in a moment.';
     }
+  }
+
+  function processLoadedList(username) {
+    const statusEl = document.getElementById('statusText');
+    if (fullList.length === 0) {
+      statusEl.innerText = `No 'Plan to Watch' anime found for ${username}.`;
+      return;
+    }
+    remainingPool = [...fullList];
+    statusEl.innerText = `Loaded ${fullList.length} anime for ${username}!`;
+    document.getElementById('animeCard').style.display = 'flex';
+    pickNext();
   }
 
   function pickNext() {
@@ -294,16 +349,14 @@
       remainingPool.splice(randomIndex, 1);
     }
 
-    // Display updates
-    const title = anime.title.english || anime.title.romaji;
-    document.getElementById('animeTitle').innerText = title;
-    document.getElementById('animeTitle').href = anime.siteUrl;
-    document.getElementById('animeLink').href = anime.siteUrl;
-    document.getElementById('animeCover').src = anime.coverImage.extraLarge;
+    document.getElementById('animeTitle').innerText = anime.title;
+    document.getElementById('animeTitle').href = anime.url;
+    document.getElementById('animeLink').href = anime.url;
+    document.getElementById('animeCover').src = anime.cover;
 
     let meta = [];
     if (anime.episodes) meta.push(`${anime.episodes} eps`);
-    if (anime.averageScore) meta.push(`Score: ${anime.averageScore}%`);
+    if (anime.score) meta.push(`Score: ${anime.score}`);
     document.getElementById('animeDetails').innerText = meta.join(' • ');
 
     if (noRepeat) {

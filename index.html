@@ -314,12 +314,14 @@
     let chunk = 1;
     let hasNextChunk = true;
 
-    // Chunking through MediaListCollection fetches custom list sections & removes stale status entries
+    // Fetch user list collection without restricted parameters
     const query = `
       query ($username: String, $chunk: Int) {
-        MediaListCollection(userName: $username, type: ANIME, status: PLANNING, forceListFetch: true, chunk: $chunk, perChunk: 500) {
+        MediaListCollection(userName: $username, type: ANIME, chunk: $chunk, perChunk: 500, forceListFetch: true) {
           hasNextChunk
           lists {
+            name
+            isCustomList
             entries {
               status
               media {
@@ -360,7 +362,7 @@
 
         const result = await response.json();
 
-        if (result.errors) {
+        if (result.errors || !result.data || !result.data.MediaListCollection) {
           statusEl.innerText = 'User not found or list is private.';
           isListLoaded = false;
           return;
@@ -370,16 +372,18 @@
         
         if (collection && collection.lists) {
           collection.lists.forEach(list => {
-            list.entries.forEach(entry => {
-              // Strict status check at entry level to prevent moved anime from showing up
-              if (entry.status === 'PLANNING' && entry.media) {
-                masterList.push(entry.media);
-              }
-            });
+            if (list.entries) {
+              list.entries.forEach(entry => {
+                // Filter strictly for entries whose current status is PLANNING
+                if (entry.status === 'PLANNING' && entry.media) {
+                  masterList.push(entry.media);
+                }
+              });
+            }
           });
         }
 
-        hasNextChunk = collection ? collection.hasNextChunk : false;
+        hasNextChunk = collection.hasNextChunk || false;
         chunk++;
       }
 

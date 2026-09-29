@@ -179,7 +179,6 @@
   let fullList = [];
   let remainingPool = [];
 
-  // Pressing 'Enter' inside the text input loads user list
   document.getElementById('userInput').addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -187,10 +186,8 @@
     }
   });
 
-  // Global 'Enter' key listener to pick next anime
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
-      // Avoid triggering when focused inside the input field
       if (document.activeElement.id !== 'userInput') {
         if (remainingPool.length > 0 || fullList.length > 0) {
           pickNext();
@@ -203,7 +200,6 @@
     let input = document.getElementById('userInput').value.trim();
     if (!input) return alert('Please enter a username or profile URL.');
 
-    // Extract username if full URL is passed
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
 
@@ -262,7 +258,6 @@
       }
 
       remainingPool = [...fullList];
-      statusEl.innerText = `Loaded ${fullList.length} anime for ${username}!`;
       document.getElementById('animeCard').style.display = 'flex';
 
       pickNext();
@@ -277,15 +272,12 @@
 
     let pool = noRepeat ? remainingPool : fullList;
 
-    if (pool.length === 0) {
-      if (noRepeat) {
-        statusEl.innerText = 'Finished all anime in list! Resetting pool...';
-        remainingPool = [...fullList];
-        pool = remainingPool;
-      } else {
-        return;
-      }
+    if (noRepeat && remainingPool.length === 0) {
+      remainingPool = [...fullList];
+      pool = remainingPool;
     }
+
+    if (pool.length === 0) return;
 
     const randomIndex = Math.floor(Math.random() * pool.length);
     const anime = pool[randomIndex];
@@ -294,7 +286,6 @@
       remainingPool.splice(randomIndex, 1);
     }
 
-    // Display updates
     const title = anime.title.english || anime.title.romaji;
     document.getElementById('animeTitle').innerText = title;
     document.getElementById('animeTitle').href = anime.siteUrl;

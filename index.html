@@ -106,6 +106,14 @@
     button.action-btn:hover {
       background-color: #2691ce;
     }
+    button.secondary-btn {
+      background-color: #2b3d54;
+      color: #3db4f2;
+    }
+    button.secondary-btn:hover {
+      background-color: #394e6b;
+      color: #fff;
+    }
     .options {
       display: flex;
       flex-wrap: wrap;
@@ -413,6 +421,7 @@
     <div class="input-group">
       <input type="text" id="recUserInput" placeholder="Enter username or profile URL" value="" />
       <button class="action-btn" onclick="fetchRecommendations()">Get Recommendations</button>
+      <button id="shuffleRecBtn" class="action-btn secondary-btn" style="display:none;" onclick="renderRecommendations(true)">🔀 Shuffle Pool</button>
     </div>
     <div id="recStatus" class="status">Enter your username to scan your watched history for recommendations.</div>
     <div id="recGrid" class="media-grid"></div>
@@ -423,6 +432,9 @@
   let masterList = [];
   let remainingPool = [];
   let isListLoaded = false;
+  
+  // Storage pool for recommendations
+  let globalRecPool = [];
 
   function switchTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -794,7 +806,7 @@
   async function fetchRecommendations() {
     const inputEl = document.getElementById('recUserInput');
     const statusEl = document.getElementById('recStatus');
-    const gridEl = document.getElementById('recGrid');
+    const shuffleBtn = document.getElementById('shuffleRecBtn');
 
     let input = inputEl.value.trim();
     if (!input) return alert('Please enter a username or profile URL.');
@@ -803,8 +815,10 @@
     const username = match ? match[1] : input;
 
     statusEl.innerText = `Scanning completed watch history for ${username}...`;
-    gridEl.innerHTML = '';
+    document.getElementById('recGrid').innerHTML = '';
+    shuffleBtn.style.display = 'none';
 
+    // Increased recommendation sample to 25 per media title
     const query = `
       query ($username: String) {
         MediaListCollection(userName: $username, type: ANIME, forceSingleCompletedList: true) {
@@ -815,7 +829,7 @@
               media {
                 id
                 title { english romaji }
-                recommendations(sort: RATING_DESC, perPage: 10) {
+                recommendations(sort: RATING_DESC, perPage: 25) {
                   nodes {
                     mediaRecommendation {
                       id
@@ -862,7 +876,7 @@
       });
 
       if (completedEntries.length === 0) {
-        statusEl.innerText = 'No completed anime found on this account to base recommendations on.';
+        statusEl.innerText = 'No completed anime found on this account.';
         return;
       }
 
@@ -890,46 +904,63 @@
         }
       });
 
-      let recommendations = Array.from(recMap.values());
+      globalRecPool = Array.from(recMap.values());
 
-      recommendations.sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return (b.media.averageScore || 0) - (a.media.averageScore || 0);
-      });
-
-      recommendations = recommendations.slice(0, 30);
-
-      if (recommendations.length === 0) {
-        statusEl.innerText = 'No new recommendations found (you may have watched all recommended shows!).';
+      if (globalRecPool.length === 0) {
+        statusEl.innerText = 'No new recommendations found in the pool.';
         return;
       }
 
-      statusEl.innerText = `Top recommendations based on your ${completedEntries.length} completed titles:`;
-
-      recommendations.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'grid-card';
-
-        const anime = item.media;
-        const title = anime.title.english || anime.title.romaji;
-        const sourceList = item.sources.slice(0, 2).join(', ') + (item.sources.length > 2 ? ` +${item.sources.length - 2} more` : '');
-
-        card.innerHTML = `
-          <a href="${anime.siteUrl}" target="_blank">
-            <img src="${anime.coverImage.extraLarge}" alt="${title}">
-          </a>
-          <div class="grid-card-content">
-            <div class="rec-match-badge">🔥 Recommended by ${item.count} show${item.count > 1 ? 's' : ''}</div>
-            <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
-            <div class="based-on"><strong>Because you watched:</strong><br>${sourceList}</div>
-          </div>
-        `;
-        gridEl.appendChild(card);
-      });
+      shuffleBtn.style.display = 'inline-block';
+      renderRecommendations(false);
 
     } catch (err) {
       statusEl.innerText = 'Error loading recommendations.';
     }
+  }
+
+  function renderRecommendations(shouldShuffle = false) {
+    const statusEl = document.getElementById('recStatus');
+    const gridEl = document.getElementById('recGrid');
+
+    gridEl.innerHTML = '';
+
+    let itemsToDisplay = [...globalRecPool];
+
+    if (shouldShuffle) {
+      // Pick randomly across the entire fetched pool
+      itemsToDisplay = shuffle(itemsToDisplay).slice(0, 24);
+      statusEl.innerText = `Showing 24 randomly shuffled recommendations (out of ${globalRecPool.length} candidates):`;
+    } else {
+      // Sort primarily by match count, then average score
+      itemsToDisplay.sort((a, b) => {
+        if (b.count !== a.count) return b.count - a.count;
+        return (b.media.averageScore || 0) - (a.media.averageScore || 0);
+      });
+      itemsToDisplay = itemsToDisplay.slice(0, 24);
+      statusEl.innerText = `Top recommendations out of ${globalRecPool.length} total candidates:`;
+    }
+
+    itemsToDisplay.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'grid-card';
+
+      const anime = item.media;
+      const title = anime.title.english || anime.title.romaji;
+      const sourceList = item.sources.slice(0, 2).join(', ') + (item.sources.length > 2 ? ` +${item.sources.length - 2} more` : '');
+
+      card.innerHTML = `
+        <a href="${anime.siteUrl}" target="_blank">
+          <img src="${anime.coverImage.extraLarge}" alt="${title}">
+        </a>
+        <div class="grid-card-content">
+          <div class="rec-match-badge">🔥 Recommended by ${item.count} show${item.count > 1 ? 's' : ''}</div>
+          <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
+          <div class="based-on"><strong>Because you watched:</strong><br>${sourceList}</div>
+        </div>
+      `;
+      gridEl.appendChild(card);
+    });
   }
 </script>
 

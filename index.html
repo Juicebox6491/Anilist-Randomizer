@@ -98,11 +98,15 @@
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    .cover-link {
+    .cover-container {
+      position: relative;
       display: inline-block;
+      margin-bottom: 1rem;
+    }
+    .cover-link {
+      display: block;
       border-radius: 8px;
       overflow: hidden;
-      margin-bottom: 1rem;
       transition: transform 0.2s ease;
     }
     .cover-link:hover {
@@ -131,6 +135,16 @@
       font-size: 0.85rem;
       color: #8ba0b5;
       margin-bottom: 0.8rem;
+    }
+    .airing-badge {
+      background-color: #02a9ff;
+      color: #fff;
+      font-size: 0.8rem;
+      font-weight: bold;
+      padding: 6px 12px;
+      border-radius: 6px;
+      margin-bottom: 0.8rem;
+      display: none;
     }
     .genres {
       display: flex;
@@ -192,11 +206,14 @@
   <div id="statusText" class="status">Click Load to fetch the list.</div>
 
   <div id="animeCard" class="card">
-    <a id="animeLink" href="#" target="_blank" class="cover-link">
-      <img id="animeCover" src="" alt="Anime Cover">
-    </a>
+    <div class="cover-container">
+      <a id="animeLink" href="#" target="_blank" class="cover-link">
+        <img id="animeCover" src="" alt="Anime Cover">
+      </a>
+    </div>
     <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
     <div id="animeDetails" class="details"></div>
+    <div id="airingBadge" class="airing-badge"></div>
     <div id="animeGenres" class="genres"></div>
     <div id="animeDescription" class="description"></div>
     <button id="nextBtn" class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
@@ -217,6 +234,19 @@
       [arr[i], arr[j]] = [arr[j], arr[i]];
     }
     return arr;
+  }
+
+  function formatCountdown(seconds) {
+    const days = Math.floor(seconds / (3600 * 24));
+    const hours = Math.floor((seconds % (3600 * 24)) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+
+    let parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    if (hours > 0) parts.push(`${hours}h`);
+    parts.push(`${minutes}m`);
+
+    return parts.join(' ');
   }
 
   document.addEventListener('keydown', function(e) {
@@ -266,9 +296,14 @@
                 }
                 siteUrl
                 episodes
+                status
                 averageScore
                 genres
                 description(asHtml: false)
+                nextAiringEpisode {
+                  episode
+                  timeUntilAiring
+                }
               }
             }
           }
@@ -356,6 +391,23 @@
     if (anime.averageScore) meta.push(`Score: ${anime.averageScore}%`);
     document.getElementById('animeDetails').innerText = meta.join(' • ');
 
+    // Airing Status & Countdown
+    const airingBadge = document.getElementById('airingBadge');
+    if (anime.status === 'RELEASING') {
+      if (anime.nextAiringEpisode) {
+        const timeStr = formatCountdown(anime.nextAiringEpisode.timeUntilAiring);
+        airingBadge.innerText = `📺 Airing • Ep ${anime.nextAiringEpisode.episode} in ${timeStr}`;
+      } else {
+        airingBadge.innerText = `📺 Currently Airing`;
+      }
+      airingBadge.style.display = 'inline-block';
+    } else if (anime.status === 'NOT_YET_RELEASED') {
+      airingBadge.innerText = `⏳ Not Yet Aired`;
+      airingBadge.style.display = 'inline-block';
+    } else {
+      airingBadge.style.display = 'none';
+    }
+
     // Genres
     const genresEl = document.getElementById('animeGenres');
     genresEl.innerHTML = '';
@@ -371,7 +423,6 @@
     // Description
     const descEl = document.getElementById('animeDescription');
     if (anime.description) {
-      // Strip out markdown or HTML tags if present
       const cleanDesc = anime.description.replace(/<[^>]*>?/gm, '');
       descEl.innerText = cleanDesc;
       descEl.style.display = 'block';

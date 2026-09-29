@@ -1,3 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime PTW Randomizer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #0b1622;
+      color: #9fadbd;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      background-color: #151f2e;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
+      text-align: center;
+      max-width: 480px;
+      width: 100%;
+    }
+    h1 {
+      color: #edf1f5;
+      font-size: 1.6rem;
+      margin-bottom: 1.2rem;
+    }
+    .platform-selector {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      margin-bottom: 1rem;
+      font-size: 0.95rem;
+      color: #edf1f5;
+    }
+    .platform-selector label {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    input[type="text"] {
+      flex: 1;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #2e51a2;
+      background: #0b1622;
+      color: #fff;
+      font-size: 0.95rem;
+      outline: none;
+    }
+    input[type="text"]:focus {
+      border-color: #3db4f2;
+    }
+    button {
+      padding: 12px 18px;
+      border-radius: 6px;
+      border: none;
+      background-color: #3db4f2;
+      color: #fff;
+      font-weight: bold;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    button:hover {
+      background-color: #2691ce;
+    }
+    .options {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 1.2rem;
+      font-size: 0.85rem;
+      color: #8ba0b5;
+    }
+    .options input[type="checkbox"] {
+      cursor: pointer;
+    }
+    .status {
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      color: #3db4f2;
+      min-height: 1.2rem;
+    }
+    .card {
+      background: #1e2c3e;
+      border-radius: 10px;
+      padding: 1.2rem;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .cover-link {
+      display: inline-block;
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+      transition: transform 0.2s ease;
+    }
+    .cover-link:hover {
+      transform: scale(1.03);
+    }
+    .card img {
+      width: 180px;
+      height: 250px;
+      object-fit: cover;
+      display: block;
+    }
+    .card h2 {
+      margin: 0.5rem 0 0.8rem 0;
+      color: #edf1f5;
+      font-size: 1.2rem;
+      line-height: 1.3;
+    }
+    .card h2 a {
+      color: #edf1f5;
+      text-decoration: none;
+    }
+    .card h2 a:hover {
+      color: #3db4f2;
+    }
+    .details {
+      font-size: 0.85rem;
+      color: #8ba0b5;
+      margin-bottom: 1.2rem;
+    }
+    .next-btn {
+      width: 100%;
+      background-color: #02a9ff;
+    }
+    .next-btn:hover {
+      background-color: #008cd6;
+    }
+    .hint {
+      font-size: 0.8rem;
+      color: #63778d;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Anime PTW Randomizer</h1>
+  
+  <div class="platform-selector">
+    <label><input type="radio" name="platform" value="anilist" checked> AniList</label>
+    <label><input type="radio" name="platform" value="mal"> MyAnimeList</label>
+  </div>
+
+  <div class="input-group">
+    <input type="text" id="userInput" placeholder="Enter username or profile URL" value="juicebox6491" />
+    <button onclick="fetchList()">Load</button>
+  </div>
+
+  <div class="options">
+    <input type="checkbox" id="noRepeat" checked />
+    <label for="noRepeat">Remove picked items (no repeats)</label>
+  </div>
+
+  <div id="statusText" class="status">Click Load to fetch the list.</div>
+
+  <div id="animeCard" class="card">
+    <a id="animeLink" href="#" target="_blank" class="cover-link">
+      <img id="animeCover" src="" alt="Anime Cover">
+    </a>
+    <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
+    <div id="animeDetails" class="details"></div>
+    <button class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
+  </div>
+
+  <p class="hint">Press <strong>Enter</strong> key anywhere outside the input box for the next anime!</p>
+</div>
+
 <script>
   let fullList = [];
   let remainingPool = [];
@@ -94,8 +290,6 @@
 
   async function fetchMAL(username) {
     const statusEl = document.getElementById('statusText');
-    
-    // Direct query to MAL's public JSON list endpoint via CORS proxy
     const malUrl = `https://myanimelist.net/animelist/${username}/load.json?status=6`;
     const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(malUrl)}`;
 
@@ -177,3 +371,6 @@
     }
   }
 </script>
+
+</body>
+</html>

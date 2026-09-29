@@ -78,9 +78,6 @@
       font-size: 0.85rem;
       color: #8ba0b5;
     }
-    .options input[type="checkbox"] {
-      cursor: pointer;
-    }
     .status {
       font-size: 0.95rem;
       margin-bottom: 1rem;
@@ -192,10 +189,21 @@
     .next-btn:hover {
       background-color: #008cd6;
     }
-    .hint {
-      font-size: 0.8rem;
-      color: #63778d;
-      margin-top: 1rem;
+    .diff-box {
+      margin-top: 15px;
+      padding: 12px;
+      background: #0f1722;
+      border: 1px dashed #3db4f2;
+      border-radius: 8px;
+      text-align: left;
+      display: none;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+    .diff-box h3 {
+      font-size: 0.95rem;
+      color: #3db4f2;
+      margin-bottom: 6px;
     }
 
     @media (max-width: 650px) {
@@ -222,7 +230,7 @@
   <h1>AniList PTW Randomizer</h1>
   
   <div class="input-group">
-    <input type="text" id="userInput" placeholder="Enter username or profile URL" value="" />
+    <input type="text" id="userInput" placeholder="Enter username or profile URL" value="juicebox6491" />
     <button onclick="fetchList()">Load</button>
   </div>
 
@@ -249,7 +257,7 @@
     </div>
   </div>
 
-  <p class="hint">Press <strong>Enter</strong> key anywhere outside the input box for the next anime!</p>
+  <div id="diffBox" class="diff-box"></div>
 </div>
 
 <script>
@@ -282,16 +290,13 @@
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Enter') {
       const inputEl = document.getElementById('userInput');
-      
       if (!isListLoaded && document.activeElement === inputEl) {
         e.preventDefault();
         fetchList();
-      } else {
-        if (masterList.length > 0) {
-          e.preventDefault();
-          inputEl.blur();
-          pickNext();
-        }
+      } else if (masterList.length > 0) {
+        e.preventDefault();
+        inputEl.blur();
+        pickNext();
       }
     }
   });
@@ -299,20 +304,22 @@
   async function fetchList() {
     const inputEl = document.getElementById('userInput');
     let input = inputEl.value.trim();
-    if (!input) return alert('Please enter a username or profile URL.');
+    if (!input) return alert('Please enter a username.');
 
     inputEl.blur();
-
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
 
     const statusEl = document.getElementById('statusText');
-    statusEl.innerText = `Fetching collection for ${username}...`;
+    const diffBox = document.getElementById('diffBox');
+    diffBox.style.display = 'none';
+    statusEl.innerText = `Fetching list for ${username}...`;
     document.getElementById('animeCard').style.display = 'none';
 
     masterList = [];
 
-    const query = `
+    // Query 1: Regular MediaListCollection (Fetches non-adult items)
+    const queryCollection = `
       query ($username: String) {
         MediaListCollection(userName: $username, type: ANIME, status: PLANNING) {
           lists {
@@ -323,23 +330,15 @@
               media {
                 id
                 isAdult
-                title {
-                  english
-                  romaji
-                }
-                coverImage {
-                  extraLarge
-                }
+                title { english romaji }
+                coverImage { extraLarge }
                 siteUrl
                 episodes
                 status
                 averageScore
                 genres
                 description(asHtml: false)
-                nextAiringEpisode {
-                  episode
-                  timeUntilAiring
-                }
+                nextAiringEpisode { episode timeUntilAiring }
               }
             }
           }
@@ -347,27 +346,42 @@
       }
     `;
 
+    // Query 2: Page query with adult filter explicitly allowed (bypasses adult filter)
+    const queryAdult = `
+      query ($username: String, $page: Int) {
+        Page(page: $page, perPage: 50) {
+          pageInfo { hasNextPage }
+          mediaList(userName: $username, type: ANIME, status: PLANNING, isAdult: true) {
+            media {
+              id
+              isAdult
+              title { english romaji }
+              coverImage { extraLarge }
+              siteUrl
+              episodes
+              status
+              averageScore
+              genres
+              description(asHtml: false)
+              nextAiringEpisode { episode timeUntilAiring }
+            }
+          }
+        }
+      }
+    `;
+
     try {
-      const response = await fetch('https://graphql.anilist.co', {
+      // 1. Fetch Standard Collection
+      const res1 = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username } })
+        body: JSON.stringify({ query: queryCollection, variables: { username } })
       });
+      const data1 = await res1.json();
 
-      const result = await response.json();
-
-      if (result.errors || !result.data || !result.data.MediaListCollection) {
-        statusEl.innerText = 'User not found or list is private.';
-        isListLoaded = false;
-        return;
-      }
-
-      const collection = result.data.MediaListCollection;
-      
-      if (collection.lists && collection.lists.length > 0) {
-        collection.lists.forEach(list => {
-          // Ignore custom lists to match standard profile counter
-          if (!list.isCustomList) {
+      if (data1.data && data1.data.MediaListCollection) {
+        data1.data.MediaListCollection.lists.forEach(list => {
+          if (!list.isCustomList && list.entries) {
             list.entries.forEach(entry => {
               if (entry.status === 'PLANNING' && entry.media) {
                 masterList.push(entry.media);
@@ -377,6 +391,27 @@
         });
       }
 
+      // 2. Fetch Adult/18+ Items specifically (in case the missing 2 are 18+)
+      let page = 1;
+      let hasNextPage = true;
+      while (hasNextPage) {
+        const res2 = await fetch('https://graphql.anilist.co', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ query: queryAdult, variables: { username, page } })
+        });
+        const data2 = await res2.json();
+        if (data2.data && data2.data.Page && data2.data.Page.mediaList) {
+          data2.data.Page.mediaList.forEach(item => {
+            if (item.media) masterList.push(item.media);
+          });
+          hasNextPage = data2.data.Page.pageInfo.hasNextPage;
+          page++;
+        } else {
+          hasNextPage = false;
+        }
+      }
+
       // Deduplicate entries by media ID
       const seenIds = new Set();
       masterList = masterList.filter(item => {
@@ -384,6 +419,10 @@
         seenIds.add(item.id);
         return true;
       });
+
+      // Diagnostic output to browser console
+      console.log(`[AniList Diagnostic] Total loaded items: ${masterList.length}`);
+      console.table(masterList.map(m => ({ ID: m.id, Title: m.title.english || m.title.romaji, Adult: m.isAdult })));
 
       if (masterList.length === 0) {
         statusEl.innerText = 'No anime found in Plan to Watch list.';
@@ -397,7 +436,8 @@
 
       pickNext();
     } catch (err) {
-      statusEl.innerText = 'Error loading list. Check internet connection.';
+      console.error(err);
+      statusEl.innerText = 'Error loading list.';
       isListLoaded = false;
     }
   }
@@ -407,7 +447,6 @@
     const statusEl = document.getElementById('statusText');
 
     let anime;
-
     if (noRepeat) {
       if (remainingPool.length === 0) {
         statusEl.innerText = 'Finished all items! Reshuffling pool...';

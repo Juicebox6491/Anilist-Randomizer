@@ -26,7 +26,7 @@
       border-radius: 12px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
       text-align: center;
-      max-width: 480px;
+      max-width: 520px;
       width: 100%;
     }
     h1 {
@@ -115,7 +115,7 @@
       display: block;
     }
     .card h2 {
-      margin: 0.5rem 0 0.8rem 0;
+      margin: 0.2rem 0 0.5rem 0;
       color: #edf1f5;
       font-size: 1.2rem;
       line-height: 1.3;
@@ -130,7 +130,35 @@
     .details {
       font-size: 0.85rem;
       color: #8ba0b5;
+      margin-bottom: 0.8rem;
+    }
+    .genres {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 1rem;
+    }
+    .genre-tag {
+      background-color: #2b3d54;
+      color: #3db4f2;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 12px;
+    }
+    .description {
+      font-size: 0.85rem;
+      color: #a0b3c6;
+      line-height: 1.4;
+      max-height: 110px;
+      overflow-y: auto;
+      text-align: left;
+      background: #152232;
+      padding: 10px 12px;
+      border-radius: 6px;
       margin-bottom: 1.2rem;
+      width: 100%;
     }
     .next-btn {
       width: 100%;
@@ -169,6 +197,8 @@
     </a>
     <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
     <div id="animeDetails" class="details"></div>
+    <div id="animeGenres" class="genres"></div>
+    <div id="animeDescription" class="description"></div>
     <button id="nextBtn" class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
   </div>
 
@@ -237,6 +267,8 @@
                 siteUrl
                 episodes
                 averageScore
+                genres
+                description(asHtml: false)
               }
             }
           }
@@ -266,7 +298,6 @@
         list.entries.forEach(entry => rawEntries.push(entry.media));
       });
 
-      // Deduplicate by media ID so no exact anime appears twice
       const seenIds = new Set();
       masterList = [];
       
@@ -283,7 +314,6 @@
         return;
       }
 
-      // Create a shuffled copy of the pool
       remainingPool = shuffle(masterList);
       isListLoaded = true;
       document.getElementById('animeCard').style.display = 'flex';
@@ -320,10 +350,34 @@
     document.getElementById('animeLink').href = anime.siteUrl;
     document.getElementById('animeCover').src = anime.coverImage.extraLarge;
 
+    // Episode & Score Metadata
     let meta = [];
     if (anime.episodes) meta.push(`${anime.episodes} eps`);
     if (anime.averageScore) meta.push(`Score: ${anime.averageScore}%`);
     document.getElementById('animeDetails').innerText = meta.join(' • ');
+
+    // Genres
+    const genresEl = document.getElementById('animeGenres');
+    genresEl.innerHTML = '';
+    if (anime.genres && anime.genres.length > 0) {
+      anime.genres.forEach(genre => {
+        const tag = document.createElement('span');
+        tag.className = 'genre-tag';
+        tag.innerText = genre;
+        genresEl.appendChild(tag);
+      });
+    }
+
+    // Description
+    const descEl = document.getElementById('animeDescription');
+    if (anime.description) {
+      // Strip out markdown or HTML tags if present
+      const cleanDesc = anime.description.replace(/<[^>]*>?/gm, '');
+      descEl.innerText = cleanDesc;
+      descEl.style.display = 'block';
+    } else {
+      descEl.style.display = 'none';
+    }
 
     if (noRepeat) {
       statusEl.innerText = `Remaining in pool: ${remainingPool.length} / ${masterList.length}`;

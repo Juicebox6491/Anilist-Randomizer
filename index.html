@@ -307,39 +307,41 @@
     const username = match ? match[1] : input;
 
     const statusEl = document.getElementById('statusText');
-    statusEl.innerText = `Fetching list for ${username}...`;
+    statusEl.innerText = `Fetching full list for ${username}...`;
     document.getElementById('animeCard').style.display = 'none';
 
     masterList = [];
-    let page = 1;
-    let hasNextPage = true;
+    let chunk = 1;
+    let hasNextChunk = true;
 
-    // Direct MediaList pagination loop bypasses limit completely and gets live status
+    // Chunking through MediaListCollection fetches custom list sections & removes stale status entries
     const query = `
-      query ($username: String, $page: Int) {
-        Page(page: $page, perPage: 100) {
-          pageInfo {
-            hasNextPage
-          }
-          mediaList(userName: $username, type: ANIME, status: PLANNING) {
-            media {
-              id
-              title {
-                english
-                romaji
-              }
-              coverImage {
-                extraLarge
-              }
-              siteUrl
-              episodes
+      query ($username: String, $chunk: Int) {
+        MediaListCollection(userName: $username, type: ANIME, status: PLANNING, forceListFetch: true, chunk: $chunk, perChunk: 500) {
+          hasNextChunk
+          lists {
+            entries {
               status
-              averageScore
-              genres
-              description(asHtml: false)
-              nextAiringEpisode {
-                episode
-                timeUntilAiring
+              media {
+                id
+                isAdult
+                title {
+                  english
+                  romaji
+                }
+                coverImage {
+                  extraLarge
+                }
+                siteUrl
+                episodes
+                status
+                averageScore
+                genres
+                description(asHtml: false)
+                nextAiringEpisode {
+                  episode
+                  timeUntilAiring
+                }
               }
             }
           }
@@ -348,13 +350,12 @@
     `;
 
     try {
-      while (hasNextPage) {
-        statusEl.innerText = `Fetching list page ${page}...`;
+      while (hasNextChunk) {
         const response = await fetch('https://graphql.anilist.co', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           cache: 'no-cache',
-          body: JSON.stringify({ query, variables: { username, page } })
+          body: JSON.stringify({ query, variables: { username, chunk } })
         });
 
         const result = await response.json();
@@ -365,16 +366,24 @@
           return;
         }
 
-        const pageData = result.data.Page;
-        pageData.mediaList.forEach(entry => {
-          if (entry.media) masterList.push(entry.media);
-        });
+        const collection = result.data.MediaListCollection;
+        
+        if (collection && collection.lists) {
+          collection.lists.forEach(list => {
+            list.entries.forEach(entry => {
+              // Strict status check at entry level to prevent moved anime from showing up
+              if (entry.status === 'PLANNING' && entry.media) {
+                masterList.push(entry.media);
+              }
+            });
+          });
+        }
 
-        hasNextPage = pageData.pageInfo.hasNextPage;
-        page++;
+        hasNextChunk = collection ? collection.hasNextChunk : false;
+        chunk++;
       }
 
-      // Filter out duplicate media IDs if any exist
+      // Deduplicate by media ID
       const seenIds = new Set();
       masterList = masterList.filter(item => {
         if (seenIds.has(item.id)) return false;

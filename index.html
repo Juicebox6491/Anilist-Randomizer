@@ -26,18 +26,21 @@
       border-radius: 12px;
       box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6);
       text-align: center;
-      max-width: 520px;
+      max-width: 800px;
       width: 100%;
     }
     h1 {
       color: #edf1f5;
-      font-size: 1.6rem;
+      font-size: 1.8rem;
       margin-bottom: 1.2rem;
     }
     .input-group {
       display: flex;
       gap: 8px;
       margin-bottom: 1rem;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
     }
     input[type="text"] {
       flex: 1;
@@ -79,7 +82,7 @@
       cursor: pointer;
     }
     .status {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       margin-bottom: 1rem;
       color: #3db4f2;
       min-height: 1.2rem;
@@ -87,11 +90,13 @@
     .card {
       background: #1e2c3e;
       border-radius: 10px;
-      padding: 1.2rem;
+      padding: 1.5rem;
       display: none;
-      flex-direction: column;
-      align-items: center;
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 1.5rem;
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      text-align: left;
       animation: fadeIn 0.3s ease-in-out;
     }
     @keyframes fadeIn {
@@ -99,9 +104,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .cover-container {
-      position: relative;
-      display: inline-block;
-      margin-bottom: 1rem;
+      flex-shrink: 0;
     }
     .cover-link {
       display: block;
@@ -113,15 +116,22 @@
       transform: scale(1.03);
     }
     .card img {
-      width: 180px;
-      height: 250px;
+      width: 200px;
+      height: 280px;
       object-fit: cover;
       display: block;
+      border-radius: 8px;
+    }
+    .content-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
     }
     .card h2 {
-      margin: 0.2rem 0 0.5rem 0;
+      margin-bottom: 0.4rem;
       color: #edf1f5;
-      font-size: 1.2rem;
+      font-size: 1.4rem;
       line-height: 1.3;
     }
     .card h2 a {
@@ -132,7 +142,7 @@
       color: #3db4f2;
     }
     .details {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #8ba0b5;
       margin-bottom: 0.8rem;
     }
@@ -144,12 +154,12 @@
       padding: 6px 12px;
       border-radius: 6px;
       margin-bottom: 0.8rem;
-      display: none;
+      display: inline-block;
+      align-self: flex-start;
     }
     .genres {
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
       gap: 6px;
       margin-bottom: 1rem;
     }
@@ -162,14 +172,12 @@
       border-radius: 12px;
     }
     .description {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: #a0b3c6;
-      line-height: 1.4;
-      max-height: 110px;
-      overflow-y: auto;
+      line-height: 1.5;
       text-align: left;
       background: #152232;
-      padding: 10px 12px;
+      padding: 12px 14px;
       border-radius: 6px;
       margin-bottom: 1.2rem;
       width: 100%;
@@ -177,6 +185,9 @@
     .next-btn {
       width: 100%;
       background-color: #02a9ff;
+      padding: 14px;
+      font-size: 1rem;
+      margin-top: auto;
     }
     .next-btn:hover {
       background-color: #008cd6;
@@ -185,6 +196,23 @@
       font-size: 0.8rem;
       color: #63778d;
       margin-top: 1rem;
+    }
+
+    @media (max-width: 650px) {
+      .card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+      .content-container {
+        align-items: center;
+      }
+      .genres {
+        justify-content: center;
+      }
+      .airing-badge {
+        align-self: center;
+      }
     }
   </style>
 </head>
@@ -211,12 +239,14 @@
         <img id="animeCover" src="" alt="Anime Cover">
       </a>
     </div>
-    <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
-    <div id="animeDetails" class="details"></div>
-    <div id="airingBadge" class="airing-badge"></div>
-    <div id="animeGenres" class="genres"></div>
-    <div id="animeDescription" class="description"></div>
-    <button id="nextBtn" class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
+    <div class="content-container">
+      <h2><a id="animeTitle" href="#" target="_blank"></a></h2>
+      <div id="animeDetails" class="details"></div>
+      <div id="airingBadge" class="airing-badge"></div>
+      <div id="animeGenres" class="genres"></div>
+      <div id="animeDescription" class="description"></div>
+      <button id="nextBtn" class="next-btn" onclick="pickNext()">Next Anime (Press Enter)</button>
+    </div>
   </div>
 
   <p class="hint">Press <strong>Enter</strong> key anywhere outside the input box for the next anime!</p>

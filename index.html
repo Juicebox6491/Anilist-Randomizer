@@ -405,29 +405,6 @@
       margin-bottom: 8px;
       text-align: center;
     }
-    .based-on {
-      font-size: 0.8rem;
-      color: #8ba0b5;
-      margin-top: 6px;
-      margin-bottom: 8px;
-    }
-    .card-actions {
-      margin-top: auto;
-      display: flex;
-      justify-content: flex-end;
-    }
-    .dislike-btn {
-      background: #c0392b;
-      color: #fff;
-      border: none;
-      padding: 4px 8px;
-      font-size: 0.75rem;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-    .dislike-btn:hover {
-      background: #e74c3c;
-    }
     .load-more-container {
       margin-top: 20px;
       display: flex;
@@ -706,8 +683,7 @@
   }
 
   function updateDislikedCountDisplay() {
-    const countEl = document.getElementById('dislikedCount');
-    if (countEl) countEl.innerText = getDislikedIds().length;
+    document.getElementById('dislikedCount').innerText = getDislikedIds().length;
   }
 
   updateDislikedCountDisplay();
@@ -1011,6 +987,7 @@
   async function fetchAiringList(page = 1) {
     const inputEl = document.getElementById('airingUserInput');
     const statusEl = document.getElementById('airingStatus');
+    const gridEl = document.getElementById('airingGrid');
     const loadMoreBtn = document.getElementById('loadMoreAiringBtn');
     
     let input = inputEl.value.trim();
@@ -1021,7 +998,7 @@
     airingCurrentPage = page;
 
     if (page === 1) {
-      document.getElementById('airingGrid').innerHTML = '';
+      gridEl.innerHTML = '';
       statusEl.innerText = username ? `Fetching airing titles for ${username}...` : 'Fetching currently airing anime...';
     }
 

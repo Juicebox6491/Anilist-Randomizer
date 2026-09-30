@@ -449,20 +449,20 @@
         </label>
       </div>
 
-      <!-- Format Filter (TV & Movie Only) -->
+      <!-- Format Filter (TV & Movie Checkboxes) -->
       <div class="filter-group">
         <span style="color: #edf1f5; font-weight: 600;">Format:</span>
         <label>
-          <input type="checkbox" id="formatTV" checked onchange="applyFiltersAndReshuffle()" /> TV
+          <input type="checkbox" id="formatTV" checked onchange="applyFiltersAndReshuffle()" /> TV Shows
         </label>
         <label>
-          <input type="checkbox" id="formatMovie" checked onchange="applyFiltersAndReshuffle()" /> Movie
+          <input type="checkbox" id="formatMovie" checked onchange="applyFiltersAndReshuffle()" /> Movies
         </label>
       </div>
 
-      <!-- Max Episode Slider -->
+      <!-- Exact Episode Slider (0 to 100+) -->
       <div class="filter-group">
-        <label for="epSlider" style="color: #edf1f5; font-weight: 600;">Max Episodes:</label>
+        <label for="epSlider" style="color: #edf1f5; font-weight: 600;">Episodes:</label>
         <input type="range" id="epSlider" min="0" max="100" value="0" step="1" oninput="updateSliderLabel(this.value)" onchange="applyFiltersAndReshuffle()" />
         <span id="epSliderValue" style="color: #3db4f2; font-weight: bold; min-width: 55px;">Any</span>
       </div>
@@ -555,8 +555,10 @@
     const num = parseInt(val);
     if (num === 0) {
       label.innerText = "Any";
+    } else if (num === 100) {
+      label.innerText = "100+ eps";
     } else {
-      label.innerText = `≤ ${num} ep${num > 1 ? 's' : ''}`;
+      label.innerText = `${num} ep${num > 1 ? 's' : ''}`;
     }
   }
 
@@ -749,8 +751,8 @@
     const allowTV = document.getElementById('formatTV').checked;
     const allowMovie = document.getElementById('formatMovie').checked;
 
-    // Maximum Episode Count Threshold
-    const maxEpisodes = parseInt(document.getElementById('epSlider').value);
+    // Episode Count Target
+    const targetEpisodes = parseInt(document.getElementById('epSlider').value);
 
     let filtered = masterList.filter(item => {
       // 1. User List Status (Planning vs Completed)
@@ -761,18 +763,26 @@
       // 2. Anime Release Status
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
 
-      // 3. Format Filtering (TV & Movie Only)
-      const isTV = item.format === 'TV' || item.format === 'TV_SHORT';
+      // 3. Format Filtering (Default: Show Everything if both/neither checked)
+      const isTV = item.format === 'TV' || item.format === 'TV_SHORT' || item.format === 'ONA';
       const isMovie = item.format === 'MOVIE';
 
-      if (!allowTV && isTV) return false;
-      if (!allowMovie && isMovie) return false;
-      if (!isTV && !isMovie) return false;
+      if (allowTV && !allowMovie) {
+        // Only TV Shows
+        if (!isTV) return false;
+      } else if (!allowTV && allowMovie) {
+        // Only Movies
+        if (!isMovie) return false;
+      }
 
-      // 4. Maximum Episode Filtering (<= maxEpisodes)
-      if (maxEpisodes > 0) {
-        const eps = item.episodes || 0;
-        if (eps === 0 || eps > maxEpisodes) return false;
+      // 4. Episode Count Slider Matching
+      const eps = item.episodes || 0;
+      if (targetEpisodes === 100) {
+        // 100+ Episodes
+        if (eps < 100) return false;
+      } else if (targetEpisodes > 0) {
+        // Exact Match
+        if (eps !== targetEpisodes) return false;
       }
 
       // 5. Excluded Genres

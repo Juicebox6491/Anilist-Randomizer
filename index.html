@@ -421,7 +421,7 @@
         Remove picked items
       </label>
       <label for="includeCompleted">
-        <input type="checkbox" id="includeCompleted" />
+        <input type="checkbox" id="includeCompleted" onchange="applyFiltersAndReshuffle()" />
         Include Completed List
       </label>
       <label>
@@ -500,10 +500,8 @@
   let remainingPool = [];
   let isListLoaded = false;
   
-  // Storage pool for recommendations
   let globalRecPool = [];
 
-  // LocalStorage for Recommendations Hide/Dislike list ONLY
   function getDislikedIds() {
     const data = localStorage.getItem('anilist_rec_disliked');
     return data ? JSON.parse(data) : [];
@@ -596,7 +594,6 @@
     document.getElementById('animeCard').style.display = 'none';
 
     masterList = [];
-    const includeCompleted = document.getElementById('includeCompleted').checked;
 
     const query = `
       query ($username: String) {
@@ -647,10 +644,7 @@
         collection.lists.forEach(list => {
           if (!list.isCustomList) {
             list.entries.forEach(entry => {
-              const isPlanning = entry.status === 'PLANNING';
-              const isCompleted = entry.status === 'COMPLETED';
-
-              if (entry.media && (isPlanning || (includeCompleted && isCompleted))) {
+              if (entry.media) {
                 masterList.push({
                   ...entry.media,
                   userStatus: entry.status,
@@ -670,14 +664,13 @@
       });
 
       if (masterList.length === 0) {
-        statusEl.innerText = 'No anime found matching your selection.';
+        statusEl.innerText = 'No anime found in user account.';
         isListLoaded = false;
         return;
       }
 
       isListLoaded = true;
       applyFiltersAndReshuffle();
-      document.getElementById('animeCard').style.display = 'flex';
 
     } catch (err) {
       statusEl.innerText = 'Error loading list. Check internet connection.';
@@ -688,12 +681,21 @@
   function applyFiltersAndReshuffle() {
     if (!isListLoaded || masterList.length === 0) return;
 
+    const includeCompleted = document.getElementById('includeCompleted').checked;
     const statusFilter = document.getElementById('statusFilter').value;
     const excludeGenreRaw = document.getElementById('excludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
 
     let filtered = masterList.filter(item => {
-      // Filter by Status
+      // Filter by User List Status (Planning vs Completed)
+      const isPlanning = item.userStatus === 'PLANNING';
+      const isCompleted = item.userStatus === 'COMPLETED';
+
+      if (!isPlanning && !(includeCompleted && isCompleted)) {
+        return false;
+      }
+
+      // Filter by Anime Release Status
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
 
       // Filter by Excluded Genres
@@ -706,7 +708,13 @@
     });
 
     remainingPool = shuffle(filtered);
-    pickNext();
+
+    if (remainingPool.length === 0) {
+      document.getElementById('statusText').innerText = 'No anime match your active selection/filters.';
+      document.getElementById('animeCard').style.display = 'none';
+    } else {
+      pickNext();
+    }
   }
 
   function pickNext() {
@@ -1053,7 +1061,6 @@
 
     gridEl.innerHTML = '';
 
-    // Filter out disliked recommendations AND genre exclusions
     let itemsToDisplay = globalRecPool.filter(item => {
       if (dislikedIds.includes(item.media.id)) return false;
 

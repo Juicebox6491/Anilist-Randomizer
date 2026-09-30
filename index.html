@@ -134,7 +134,7 @@
       font-size: 0.85rem;
       color: #8ba0b5;
       background: #0b1622;
-      padding: 10px 14px;
+      padding: 12px 16px;
       border-radius: 8px;
     }
     .options label {
@@ -142,6 +142,17 @@
       align-items: center;
       gap: 6px;
       cursor: pointer;
+    }
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-right: 1px solid #1e2c3e;
+      padding-right: 12px;
+    }
+    .filter-group:last-child {
+      border-right: none;
+      padding-right: 0;
     }
     .status {
       font-size: 0.95rem;
@@ -381,7 +392,18 @@
       color: #fff;
     }
 
-    @media (max-width: 650px) {
+    @media (max-width: 768px) {
+      .options {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .filter-group {
+        border-right: none;
+        border-bottom: 1px solid #1e2c3e;
+        padding-right: 0;
+        padding-bottom: 8px;
+        justify-content: center;
+      }
       .card {
         flex-direction: column;
         align-items: center;
@@ -416,26 +438,52 @@
     </div>
 
     <div class="options">
-      <label for="noRepeat">
-        <input type="checkbox" id="noRepeat" checked />
-        Remove picked items
-      </label>
-      <label for="includeCompleted">
-        <input type="checkbox" id="includeCompleted" onchange="applyFiltersAndReshuffle()" />
-        Include Completed List
-      </label>
-      <label>
-        Status:
-        <select id="statusFilter" onchange="applyFiltersAndReshuffle()">
-          <option value="ALL">All Statuses</option>
-          <option value="FINISHED">Finished Airing Only</option>
-          <option value="RELEASING">Currently Airing Only</option>
-        </select>
-      </label>
-      <label>
-        Exclude Genre:
-        <input type="text" id="excludeGenre" placeholder="e.g. Horror, Ecchi" style="width: 130px; padding: 4px 8px;" onchange="applyFiltersAndReshuffle()" />
-      </label>
+      <div class="filter-group">
+        <label for="noRepeat">
+          <input type="checkbox" id="noRepeat" checked />
+          Remove picked items
+        </label>
+        <label for="includeCompleted">
+          <input type="checkbox" id="includeCompleted" onchange="applyFiltersAndReshuffle()" />
+          Include Completed List
+        </label>
+      </div>
+
+      <!-- Format Filter (TV & Movie Only) -->
+      <div class="filter-group">
+        <span style="color: #edf1f5; font-weight: 600;">Format:</span>
+        <label>
+          <input type="checkbox" id="formatTV" checked onchange="applyFiltersAndReshuffle()" /> TV
+        </label>
+        <label>
+          <input type="checkbox" id="formatMovie" checked onchange="applyFiltersAndReshuffle()" /> Movie
+        </label>
+      </div>
+
+      <!-- Max Episode Slider -->
+      <div class="filter-group">
+        <label for="epSlider" style="color: #edf1f5; font-weight: 600;">Max Episodes:</label>
+        <input type="range" id="epSlider" min="0" max="100" value="0" step="1" oninput="updateSliderLabel(this.value)" onchange="applyFiltersAndReshuffle()" />
+        <span id="epSliderValue" style="color: #3db4f2; font-weight: bold; min-width: 55px;">Any</span>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          Status:
+          <select id="statusFilter" onchange="applyFiltersAndReshuffle()">
+            <option value="ALL">All Statuses</option>
+            <option value="FINISHED">Finished Airing Only</option>
+            <option value="RELEASING">Currently Airing Only</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="filter-group">
+        <label>
+          Exclude Genre:
+          <input type="text" id="excludeGenre" placeholder="e.g. Horror, Ecchi" style="width: 120px; padding: 4px 8px;" onchange="applyFiltersAndReshuffle()" />
+        </label>
+      </div>
     </div>
 
     <div id="statusText" class="status">Click Load to fetch the list.</div>
@@ -501,6 +549,16 @@
   let isListLoaded = false;
   
   let globalRecPool = [];
+
+  function updateSliderLabel(val) {
+    const label = document.getElementById('epSliderValue');
+    const num = parseInt(val);
+    if (num === 0) {
+      label.innerText = "Any";
+    } else {
+      label.innerText = `≤ ${num} ep${num > 1 ? 's' : ''}`;
+    }
+  }
 
   function getDislikedIds() {
     const data = localStorage.getItem('anilist_rec_disliked');
@@ -606,6 +664,7 @@
               repeat
               media {
                 id
+                format
                 isAdult
                 title { english romaji }
                 coverImage { extraLarge }
@@ -686,19 +745,37 @@
     const excludeGenreRaw = document.getElementById('excludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
 
+    // Format Filter Flags
+    const allowTV = document.getElementById('formatTV').checked;
+    const allowMovie = document.getElementById('formatMovie').checked;
+
+    // Maximum Episode Count Threshold
+    const maxEpisodes = parseInt(document.getElementById('epSlider').value);
+
     let filtered = masterList.filter(item => {
-      // Filter by User List Status (Planning vs Completed)
+      // 1. User List Status (Planning vs Completed)
       const isPlanning = item.userStatus === 'PLANNING';
       const isCompleted = item.userStatus === 'COMPLETED';
+      if (!isPlanning && !(includeCompleted && isCompleted)) return false;
 
-      if (!isPlanning && !(includeCompleted && isCompleted)) {
-        return false;
-      }
-
-      // Filter by Anime Release Status
+      // 2. Anime Release Status
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
 
-      // Filter by Excluded Genres
+      // 3. Format Filtering (TV & Movie Only)
+      const isTV = item.format === 'TV' || item.format === 'TV_SHORT';
+      const isMovie = item.format === 'MOVIE';
+
+      if (!allowTV && isTV) return false;
+      if (!allowMovie && isMovie) return false;
+      if (!isTV && !isMovie) return false;
+
+      // 4. Maximum Episode Filtering (<= maxEpisodes)
+      if (maxEpisodes > 0) {
+        const eps = item.episodes || 0;
+        if (eps === 0 || eps > maxEpisodes) return false;
+      }
+
+      // 5. Excluded Genres
       if (excludeGenres.length > 0 && item.genres) {
         const itemGenres = item.genres.map(g => g.toLowerCase());
         if (excludeGenres.some(ex => itemGenres.includes(ex))) return false;
@@ -749,6 +826,7 @@
     document.getElementById('animeCover').src = anime.coverImage.extraLarge;
 
     let meta = [];
+    if (anime.format) meta.push(anime.format.replace('_', ' '));
     if (anime.episodes) meta.push(`${anime.episodes} eps`);
     if (anime.averageScore) meta.push(`Score: ${anime.averageScore}%`);
     document.getElementById('animeDetails').innerText = meta.join(' • ');

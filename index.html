@@ -436,7 +436,7 @@
     <button class="tab-btn" onclick="switchTab('recommendationsTab', this)">💡 Recs</button>
   </div>
 
-  <!-- NEW TAB 1: ANIME LIST -->
+  <!-- TAB 1: ANIME LIST -->
   <div id="animeListTab" class="tab-content active">
     <div class="input-group">
       <input type="text" id="animeListUser" placeholder="Enter AniList username" />
@@ -456,7 +456,7 @@
     <div id="animeListGrid" class="media-grid"></div>
   </div>
 
-  <!-- NEW TAB 2: MANGA LIST -->
+  <!-- TAB 2: MANGA LIST -->
   <div id="mangaListTab" class="tab-content">
     <div class="input-group">
       <input type="text" id="mangaListUser" placeholder="Enter AniList username" />
@@ -476,7 +476,7 @@
     <div id="mangaListGrid" class="media-grid"></div>
   </div>
 
-  <!-- ORIGINAL TAB 3: RANDOMIZER (All controls preserved) -->
+  <!-- TAB 3: RANDOMIZER -->
   <div id="randomizerTab" class="tab-content">
     <div class="input-group">
       <input type="text" id="userInput" placeholder="Enter username or profile URL" value="" />
@@ -546,13 +546,13 @@
     </div>
   </div>
 
-  <!-- ORIGINAL TAB 4: CURRENTLY AIRING -->
+  <!-- TAB 4: CURRENTLY AIRING -->
   <div id="airingTab" class="tab-content">
     <div id="airingStatus" class="status">Currently airing seasonal anime.</div>
     <div id="airingGrid" class="media-grid"></div>
   </div>
 
-  <!-- ORIGINAL TAB 5: RECOMMENDATIONS -->
+  <!-- TAB 5: RECOMMENDATIONS -->
   <div id="recommendationsTab" class="tab-content">
     <div class="input-group">
       <input type="text" id="recUserInput" placeholder="Enter username" />
@@ -583,7 +583,7 @@
     }
   }
 
-  /* --- NEW TAB FUNCTIONS: ANIME & MANGA LISTS --- */
+  /* --- ANIME & MANGA USER LIST FUNCTIONS --- */
   async function fetchUserMediaList(type) {
     const isAnime = type === 'ANIME';
     const inputId = isAnime ? 'animeListUser' : 'mangaListUser';
@@ -699,7 +699,7 @@
     });
   }
 
-  /* --- ORIGINAL RANDOMIZER FUNCTIONS --- */
+  /* --- RANDOMIZER FUNCTIONS --- */
   function toggleFormatDropdown(event) {
     event.stopPropagation();
     document.getElementById('formatDropdown').classList.toggle('open');
@@ -922,7 +922,7 @@
     document.getElementById('animeDescription').innerText = desc;
   }
 
-  /* --- ORIGINAL AIRING FUNCTION --- */
+  /* --- AIRING FUNCTION --- */
   async function fetchAiringList() {
     const statusEl = document.getElementById('airingStatus');
     const gridEl = document.getElementById('airingGrid');
@@ -972,25 +972,38 @@
     }
   }
 
-  /* --- ORIGINAL RECOMMENDATIONS FUNCTION --- */
+  /* --- WORKING PERSONALIZED RECOMMENDATIONS FUNCTION --- */
   async function fetchRecommendations() {
     const username = document.getElementById('recUserInput').value.trim();
     const statusEl = document.getElementById('recStatus');
     const gridEl = document.getElementById('recGrid');
 
     if (!username) return alert('Enter a username');
-    statusEl.innerText = `Fetching recommendations for ${username}...`;
+    statusEl.innerText = `Analyzing ${username}'s top anime to build recommendations...`;
+    gridEl.innerHTML = '';
 
-    const query = `
+    const listQuery = `
       query ($username: String) {
-        Page(page: 1, perPage: 24) {
-          recommendations(sort: RATING_DESC) {
-            mediaRecommendation {
-              id
-              title { english romaji }
-              coverImage { extraLarge }
-              siteUrl
-              averageScore
+        MediaListCollection(userName: $username, type: ANIME) {
+          lists {
+            entries {
+              score(format: POINT_100)
+              mediaId
+              media {
+                title { english romaji }
+                recommendations(perPage: 5, sort: RATING_DESC) {
+                  nodes {
+                    mediaRecommendation {
+                      id
+                      title { english romaji }
+                      coverImage { extraLarge }
+                      siteUrl
+                      averageScore
+                      isAdult
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -1001,28 +1014,70 @@
       const response = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { username } })
+        body: JSON.stringify({ query: listQuery, variables: { username } })
       });
       const result = await response.json();
-      const recs = result.data.Page.recommendations;
 
-      gridEl.innerHTML = '';
-      recs.forEach(r => {
-        const item = r.mediaRecommendation;
-        if (!item) return;
-        const title = item.title.english || item.title.romaji;
+      if (!result.data || !result.data.MediaListCollection) {
+        statusEl.innerText = 'User not found or list is private.';
+        return;
+      }
+
+      const userMediaIds = new Set();
+      const rawRecsMap = new Map();
+
+      result.data.MediaListCollection.lists.forEach(list => {
+        list.entries.forEach(entry => {
+          userMediaIds.add(entry.mediaId);
+
+          if (entry.score >= 70 || !entry.score) {
+            const recNodes = entry.media.recommendations?.nodes || [];
+            recNodes.forEach(node => {
+              const recMedia = node.mediaRecommendation;
+              if (recMedia && !recMedia.isAdult) {
+                if (!rawRecsMap.has(recMedia.id)) {
+                  rawRecsMap.set(recMedia.id, { media: recMedia, count: 1 });
+                } else {
+                  rawRecsMap.get(recMedia.id).count += 1;
+                }
+              }
+            });
+          }
+        });
+      });
+
+      const filteredRecs = Array.from(rawRecsMap.values())
+        .filter(item => !userMediaIds.has(item.media.id))
+        .sort((a, b) => b.count - a.count || (b.media.averageScore || 0) - (a.media.averageScore || 0))
+        .slice(0, 24);
+
+      if (filteredRecs.length === 0) {
+        statusEl.innerText = 'No tailored recommendations found. Try adding scores to your AniList entries!';
+        return;
+      }
+
+      filteredRecs.forEach(item => {
+        const media = item.media;
+        const title = media.title.english || media.title.romaji;
         const card = document.createElement('div');
         card.className = 'grid-card';
         card.innerHTML = `
-          <a href="${item.siteUrl}" target="_blank"><img src="${item.coverImage.extraLarge}" alt="${title}"></a>
+          <a href="${media.siteUrl}" target="_blank">
+            <img src="${media.coverImage.extraLarge}" alt="${title}">
+          </a>
           <div class="grid-card-content">
-            <h3><a href="${item.siteUrl}" target="_blank" title="${title}">${title}</a></h3>
-            <div class="progress-bar-container"><span>Score: ${item.averageScore || 'N/A'}%</span></div>
+            <h3><a href="${media.siteUrl}" target="_blank" title="${title}">${title}</a></h3>
+            <div class="progress-bar-container">
+              <span>Matched ${item.count} favorite${item.count > 1 ? 's' : ''}</span>
+              <span>${media.averageScore ? media.averageScore + '%' : ''}</span>
+            </div>
           </div>
         `;
         gridEl.appendChild(card);
       });
-      statusEl.innerText = `Top recommendations based on community trends:`;
+
+      statusEl.innerText = `Top recommendations based on ${username}'s list:`;
+
     } catch (err) {
       statusEl.innerText = 'Error fetching recommendations.';
     }

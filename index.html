@@ -31,11 +31,14 @@
     .tab-view { display: none; }
     .tab-view.active { display: block; }
 
-    .auth-banner { background: #241f1c; padding: 12px 16px; border-radius: 10px; display: flex; gap: 10px; align-items: center; margin-bottom: 15px; border: 1px solid var(--border); }
+    .auth-banner { background: #241f1c; padding: 12px 16px; border-radius: 10px; display: flex; gap: 10px; align-items: center; margin-bottom: 15px; border: 1px solid var(--border); flex-wrap: wrap; }
     input[type="text"], select, input[type="number"] { background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 9px 12px; border-radius: 8px; font-size: 0.85rem; outline: none; }
-    input[type="text"] { flex: 1; }
+    input[type="text"] { flex: 1; min-width: 200px; }
     input:focus, select:focus { border-color: var(--accent); }
     
+    .checkbox-label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; user-select: none; }
+    .checkbox-label input { accent-color: var(--accent); width: 15px; height: 15px; cursor: pointer; }
+
     .btn { background: var(--accent); color: #141210; border: none; padding: 9px 16px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 0.85rem; transition: filter 0.2s; display: inline-flex; align-items: center; gap: 6px; }
     .btn:hover { filter: brightness(1.1); }
     .btn-secondary { background: #3a332e; color: #fff; }
@@ -63,8 +66,11 @@
     .card-footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 6px; }
     .status-indicator { text-transform: uppercase; font-weight: 700; font-size: 0.68rem; }
 
-    /* Explore & Search layouts */
-    .explore-section-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    /* Explore & See More Layouts */
+    .explore-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .explore-section-title { font-size: 1rem; font-weight: 700; color: var(--accent); display: flex; align-items: center; gap: 6px; margin: 0; }
+    .see-more-btn { background: transparent; border: none; color: var(--accent); font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+    .see-more-btn:hover { text-decoration: underline; }
     .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
 
     /* Profile / Stats layout */
@@ -122,9 +128,12 @@
 
   <div class="content-viewport">
     
-    <!-- CONNECTION BAR -->
+    <!-- CONNECTION BAR WITH 18+ TOGGLE -->
     <div class="auth-banner">
       <input type="text" id="usernameInput" placeholder="Enter your AniList username..." />
+      <label class="checkbox-label">
+        <input type="checkbox" id="nsfwCheckbox" /> Include 18+ Content
+      </label>
       <button class="btn" onclick="connectUserAccount()">Connect</button>
     </div>
 
@@ -156,7 +165,7 @@
       <div id="mangaGrid" class="media-grid"></div>
     </div>
 
-    <!-- EXPLORE TAB -->
+    <!-- EXPLORE TAB WITH SEE MORE BUTTONS -->
     <div id="exploreTab" class="tab-view">
       <div class="search-row">
         <input type="text" id="exploreSearchBox" placeholder="Search anime & manga database..." onkeydown="if(event.key==='Enter') runGlobalSearch()" />
@@ -164,14 +173,22 @@
       </div>
       
       <div id="exploreDynamicResultsContainer" style="display:none; margin-bottom: 24px;">
-        <div class="explore-section-title">🔍 Search Results</div>
+        <div class="explore-header-row">
+          <div class="explore-section-title">🔍 Search Results</div>
+        </div>
         <div id="exploreResultsGrid" class="media-grid"></div>
       </div>
 
-      <div class="explore-section-title">🔥 Trending This Season</div>
+      <div class="explore-header-row">
+        <div class="explore-section-title">🔥 Trending This Season</div>
+        <button class="see-more-btn" id="seeMoreTrending" onclick="toggleSeeMore('trending')">See More</button>
+      </div>
       <div id="trendingGrid" class="media-grid" style="margin-bottom: 24px;"></div>
 
-      <div class="explore-section-title">⭐ All-Time Popular</div>
+      <div class="explore-header-row">
+        <div class="explore-section-title">⭐ All-Time Popular</div>
+        <button class="see-more-btn" id="seeMorePopular" onclick="toggleSeeMore('popular')">See More</button>
+      </div>
       <div id="popularGrid" class="media-grid"></div>
     </div>
 
@@ -217,7 +234,6 @@
       </div>
     </div>
 
-    <!-- STATUS DISTRIBUTION MATCHING APP SCREENSHOT -->
     <div class="status-dist-container" id="statusDistContainer" style="display:none;">
       <div class="dist-title">Global Status Distribution</div>
       <div class="dist-pills" id="distPillsRow"></div>
@@ -237,6 +253,12 @@
   let activeAnimeFilter = 'ALL';
   let activeMangaFilter = 'ALL';
   let activeSelectedMedia = null;
+  
+  // Storage for explore full entries to support See More toggle
+  let rawTrendingData = [];
+  let rawPopularData = [];
+  let trendingExpanded = false;
+  let popularExpanded = false;
 
   async function connectUserAccount() {
     const val = document.getElementById('usernameInput').value.trim();
@@ -256,6 +278,7 @@
 
   async function fetchUserLists(mediaType) {
     const isAnime = mediaType === 'ANIME';
+    const includeAdult = document.getElementById('nsfwCheckbox').checked;
     const query = `
       query ($username: String, $type: MediaType) {
         MediaListCollection(userName: $username, type: $type, forceSingleCompletedList: true) {
@@ -275,6 +298,7 @@
                 averageScore
                 genres
                 description
+                isAdult
                 title { english romaji }
                 coverImage { extraLarge }
                 stats {
@@ -299,6 +323,7 @@
       let extractedEntries = [];
       json.data.MediaListCollection.lists.forEach(listGroup => {
         listGroup.entries.forEach(entry => {
+          if (!includeAdult && entry.media.isAdult) return; // filter out adult if not enabled
           extractedEntries.push({
             listEntryId: entry.id,
             listStatus: entry.status,
@@ -404,7 +429,7 @@
     const query = `
       query ($id: Int) {
         Media(id: $id) {
-          id type episodes chapters format status averageScore genres description
+          id type episodes chapters format status averageScore genres description isAdult
           title { english romaji }
           coverImage { extraLarge }
           stats {
@@ -514,16 +539,17 @@
   }
 
   async function loadExploreFeeds() {
+    const includeAdult = document.getElementById('nsfwCheckbox').checked;
     const query = `
-      query {
-        trending: Page(page: 1, perPage: 12) {
-          media(sort: TRENDING_DESC, type: ANIME, isAdult: false) {
-            id type format averageScore title { english romaji } coverImage { extraLarge }
+      query ($isAdult: Boolean) {
+        trending: Page(page: 1, perPage: 24) {
+          media(sort: TRENDING_DESC, type: ANIME, isAdult: $isAdult) {
+            id type format averageScore title { english romaji } coverImage { extraLarge } isAdult
           }
         }
-        popular: Page(page: 1, perPage: 12) {
-          media(sort: POPULARITY_DESC, type: ANIME, isAdult: false) {
-            id type format averageScore title { english romaji } coverImage { extraLarge }
+        popular: Page(page: 1, perPage: 24) {
+          media(sort: POPULARITY_DESC, type: ANIME, isAdult: $isAdult) {
+            id type format averageScore title { english romaji } coverImage { extraLarge } isAdult
           }
         }
       }
@@ -532,16 +558,38 @@
       const res = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query })
+        body: JSON.stringify({ query, variables: { isAdult: includeAdult } })
       });
       const json = await res.json();
       if (json.data) {
-        renderCardGridSnippet(json.data.trending.media, 'trendingGrid');
-        renderCardGridSnippet(json.data.popular.media, 'popularGrid');
+        rawTrendingData = json.data.trending.media;
+        rawPopularData = json.data.popular.media;
+        renderExploreGrids();
       }
     } catch (err) {
       console.error(err);
     }
+  }
+
+  function renderExploreGrids() {
+    // Render limited subset (e.g. 12 items) or full (24 items) depending on expanded state
+    const trendingToShow = trendingExpanded ? rawTrendingData : rawTrendingData.slice(0, 12);
+    const popularToShow = popularExpanded ? rawPopularData : rawPopularData.slice(0, 12);
+
+    renderCardGridSnippet(trendingToShow, 'trendingGrid');
+    renderCardGridSnippet(popularToShow, 'popularGrid');
+
+    document.getElementById('seeMoreTrending').innerText = trendingExpanded ? 'Show Less' : 'See More';
+    document.getElementById('seeMorePopular').innerText = popularExpanded ? 'Show Less' : 'See More';
+  }
+
+  function toggleSeeMore(section) {
+    if (section === 'trending') {
+      trendingExpanded = !trendingExpanded;
+    } else if (section === 'popular') {
+      popularExpanded = !popularExpanded;
+    }
+    renderExploreGrids();
   }
 
   function renderCardGridSnippet(mediaList, containerId) {
@@ -569,16 +617,17 @@
   async function runGlobalSearch() {
     const term = document.getElementById('exploreSearchBox').value.trim();
     const container = document.getElementById('exploreDynamicResultsContainer');
+    const includeAdult = document.getElementById('nsfwCheckbox').checked;
     if (!term) {
       container.style.display = 'none';
       return;
     }
     
     const query = `
-      query ($search: String) {
+      query ($search: String, $isAdult: Boolean) {
         Page(page: 1, perPage: 16) {
-          media(search: $search, isAdult: false) {
-            id type format averageScore title { english romaji } coverImage { extraLarge }
+          media(search: $search, isAdult: $isAdult) {
+            id type format averageScore title { english romaji } coverImage { extraLarge } isAdult
           }
         }
       }
@@ -587,7 +636,7 @@
       const res = await fetch('https://graphql.anilist.co', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, variables: { search: term } })
+        body: JSON.stringify({ query, variables: { search: term, isAdult: includeAdult } })
       });
       const json = await res.json();
       container.style.display = 'block';
@@ -690,7 +739,7 @@
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
-    if (tabId === 'exploreTab' && !document.getElementById('trendingGrid').hasChildNodes()) {
+    if (tabId === 'exploreTab' && !rawTrendingData.length) {
       loadExploreFeeds();
     }
   }

@@ -19,7 +19,6 @@
     body { background-color: var(--bg-main); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; padding: 15px; align-items: center; }
     .app-container { width: 100%; max-width: 1200px; background: var(--bg-card); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--border); }
     
-    /* Header & Navigation */
     header { background: #0f172a; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 10px; }
     .logo { font-size: 1.3rem; font-weight: bold; color: #60a5fa; display: flex; align-items: center; gap: 8px; }
     .nav-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
@@ -27,15 +26,13 @@
     .nav-btn:hover { color: var(--text-main); background: rgba(255,255,255,0.05); }
     .nav-btn.active { color: #fff; background: var(--accent); }
 
-    /* Main Content Area */
     .content-body { padding: 20px; flex: 1; overflow-y: auto; }
     .tab-pane { display: none; }
     .tab-pane.active { display: block; }
 
-    /* Controls Bar */
     .controls-bar { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
     .search-box { display: flex; gap: 8px; flex: 1; min-width: 260px; }
-    input[type="text"], select { background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 9px 12px; border-radius: 6px; font-size: 0.9rem; outline: none; }
+    input[type="text"], select, input[type="number"] { background: var(--bg-input); border: 1px solid var(--border); color: #fff; padding: 9px 12px; border-radius: 6px; font-size: 0.9rem; outline: none; }
     input[type="text"] { flex: 1; }
     input:focus, select:focus { border-color: var(--accent); }
     
@@ -46,63 +43,70 @@
     .btn-danger { background: #dc2626; }
     .btn-danger:hover { background: #b91c1c; }
 
-    /* Sub-filters */
     .sub-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 15px; }
     .chip { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-muted); padding: 5px 12px; border-radius: 16px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
     .chip.active { background: #2563eb33; border-color: var(--accent); color: #60a5fa; }
 
-    /* Media Grid Layout */
     .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 16px; }
-    .media-card { background: #111827; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.2s; position: relative; }
+    .media-card { background: #111827; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; transition: transform 0.2s; position: relative; cursor: pointer; }
     .media-card:hover { transform: translateY(-3px); border-color: #4b5563; }
-    .media-poster-wrap { width: 100%; height: 230px; position: relative; cursor: pointer; background: #000; }
+    .media-poster-wrap { width: 100%; height: 230px; position: relative; background: #000; }
     .media-poster-wrap img { width: 100%; height: 100%; object-fit: cover; }
     .media-badge { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); font-size: 0.75rem; padding: 3px 7px; border-radius: 4px; font-weight: 600; color: #fff; }
     .media-info { padding: 10px; display: flex; flex-direction: column; flex: 1; justify-content: space-between; }
-    .media-title { font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+    .media-title { font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .media-title:hover { color: #60a5fa; }
     .media-footer { display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-top: 6px; border-top: 1px solid var(--border); padding-top: 6px; }
 
-    /* Quick Action Controls inside Card */
     .card-quick-actions { display: flex; gap: 4px; margin-top: 6px; align-items: center; }
     .quick-btn { background: var(--bg-input); border: none; color: #fff; width: 26px; height: 26px; border-radius: 4px; cursor: pointer; font-weight: bold; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; }
     .quick-btn:hover { background: var(--accent); }
     .progress-text { font-size: 0.8rem; font-weight: 600; color: #93c5fd; flex: 1; text-align: center; }
 
-    /* Explore Subsections */
     .explore-sections { display: flex; flex-direction: column; gap: 25px; }
     .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
     .section-title { font-size: 1.1rem; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .see-more-link { color: var(--accent); font-size: 0.85rem; cursor: pointer; font-weight: 600; }
+    .see-more-link:hover { text-decoration: underline; }
+    
     .horizontal-scroll { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
     .horizontal-scroll::-webkit-scrollbar { height: 6px; }
     .horizontal-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
     .horizontal-scroll .media-card { min-width: 160px; flex-shrink: 0; scroll-snap-align: start; }
 
-    /* Profile / Stats Tab */
     .profile-container { display: flex; flex-direction: column; gap: 20px; }
     .profile-header { background: #111827; border: 1px solid var(--border); border-radius: 8px; padding: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
     .profile-avatar { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); }
     .profile-meta h2 { font-size: 1.4rem; color: #fff; margin-bottom: 4px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
     .stat-card { background: #111827; border: 1px solid var(--border); border-radius: 8px; padding: 15px; text-align: center; }
-    .stat-card h3 { font-size: 1.6rem; color: #60a5fa; margin-bottom: 4px; }
-    .stat-card p { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-card h3 { font-size: 1.5rem; color: #60a5fa; margin-bottom: 4px; }
+    .stat-card p { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* Status text or notifications */
     .status-msg { text-align: center; color: var(--text-muted); padding: 30px; font-size: 0.95rem; }
 
-    /* Modal / Details Popup */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
-    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 550px; max-height: 90vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
+    /* Modal Styling */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
+    .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
     .modal-header { display: flex; justify-content: space-between; align-items: flex-start; }
-    .modal-title { font-size: 1.1rem; font-weight: bold; color: #fff; }
-    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; }
-    .modal-body { display: flex; gap: 15px; flex-wrap: wrap; }
-    .modal-body img { width: 130px; height: 180px; object-fit: cover; border-radius: 6px; }
+    .modal-title { font-size: 1.2rem; font-weight: bold; color: #fff; }
+    .close-btn { background: none; border: none; color: var(--text-muted); font-size: 1.3rem; cursor: pointer; }
+    .modal-body { display: flex; gap: 18px; flex-wrap: wrap; }
+    .modal-body img { width: 140px; height: 200px; object-fit: cover; border-radius: 6px; }
     .modal-details { flex: 1; display: flex; flex-direction: column; gap: 8px; font-size: 0.85rem; color: var(--text-muted); }
     .modal-details p span { color: #fff; font-weight: 600; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; font-size: 0.85rem; }
-    .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+    .modal-desc { font-size: 0.8rem; color: #d1d5db; line-height: 1.4; max-height: 80px; overflow-y: auto; margin-top: 4px; }
+    
+    .relations-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .relations-title { font-size: 0.9rem; font-weight: bold; color: #fff; margin-bottom: 8px; }
+    .relations-grid { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 5px; }
+    .relation-card { min-width: 90px; max-width: 90px; background: #111827; border-radius: 6px; border: 1px solid var(--border); padding: 5px; cursor: pointer; text-align: center; }
+    .relation-card img { width: 100%; height: 75px; object-fit: cover; border-radius: 4px; }
+    .relation-card p { font-size: 0.7rem; color: #fff; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .relation-card span { font-size: 0.6rem; color: #93c5fd; display: block; }
+
+    .form-group { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 5px; }
 
     @media(max-width: 768px) {
       .media-grid { grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); }
@@ -173,7 +177,7 @@
     <div id="exploreTab" class="tab-pane">
       <div class="controls-bar" style="margin-bottom: 20px;">
         <div class="search-box">
-          <input type="text" id="exploreSearchInput" placeholder="Search global anime & manga database..." />
+          <input type="text" id="exploreSearchInput" placeholder="Search global anime & manga database (e.g., One Piece)..." />
           <button class="btn" onclick="executeGlobalSearch()">Search</button>
         </div>
       </div>
@@ -181,15 +185,24 @@
       
       <div class="explore-sections" id="exploreCategories">
         <div class="section-container">
-          <div class="section-header"><div class="section-title">🔥 Trending Anime</div></div>
+          <div class="section-header">
+            <div class="section-title">🔥 Trending Anime</div>
+            <span class="see-more-link" onclick="openSeeMore('Trending Anime', 'TRENDING_DESC', 'ANIME')">See More →</span>
+          </div>
           <div class="horizontal-scroll" id="exploreTrending"></div>
         </div>
         <div class="section-container">
-          <div class="section-header"><div class="section-title">⭐ Popular All Time</div></div>
+          <div class="section-header">
+            <div class="section-title">⭐ Popular All Time</div>
+            <span class="see-more-link" onclick="openSeeMore('Popular Anime', 'POPULARITY_DESC', 'ANIME')">See More →</span>
+          </div>
           <div class="horizontal-scroll" id="explorePopular"></div>
         </div>
         <div class="section-container">
-          <div class="section-header"><div class="section-title">📅 Upcoming Next Season</div></div>
+          <div class="section-header">
+            <div class="section-title">📅 Upcoming Next Season</div>
+            <span class="see-more-link" onclick="openSeeMore('Upcoming Anime', 'POPULARITY_DESC', 'ANIME', 'NOT_YET_RELEASED')">See More →</span>
+          </div>
           <div class="horizontal-scroll" id="exploreUpcoming"></div>
         </div>
       </div>
@@ -213,29 +226,50 @@
     <div class="modal-body">
       <img id="modalImg" src="" alt="Poster">
       <div class="modal-details">
-        <p>Format: <span id="modalFormat">-</span></p>
-        <p>Status: <span id="modalStatus">-</span></p>
-        <p>Average Score: <span id="modalScore">-</span></p>
-        <div class="form-group" style="margin-top: 8px;">
-          <label>List Status:</label>
-          <select id="editListStatus">
-            <option value="CURRENT">Watching / Reading</option>
-            <option value="COMPLETED">Completed</option>
-            <option value="PAUSED">Paused</option>
-            <option value="DROPPED">Dropped</option>
-            <option value="PLANNING">Planning</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin-top: 6px;">
-          <label id="modalProgressLabel">Progress:</label>
-          <input type="number" id="editProgressInput" min="0" value="0" />
+        <p>Format: <span id="modalFormat">-</span> | Status: <span id="modalMediaStatus">-</span></p>
+        <p>Average Score: <span id="modalScore">-</span> | Genres: <span id="modalGenres">-</span></p>
+        <div class="modal-desc" id="modalDesc">No description available.</div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 6px;">
+          <div class="form-group" style="flex: 1;">
+            <label>List Status:</label>
+            <select id="editListStatus">
+              <option value="CURRENT">Watching / Reading</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="PAUSED">Paused</option>
+              <option value="DROPPED">Dropped</option>
+              <option value="PLANNING">Planning</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex: 1;">
+            <label id="modalProgressLabel">Progress:</label>
+            <input type="number" id="editProgressInput" min="0" value="0" />
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- RELATIONS / SEQUELS / PREQUELS -->
+    <div class="relations-section" id="relationsContainer" style="display:none;">
+      <div class="relations-title">Related / Sequels / Prequels</div>
+      <div class="relations-grid" id="relationsGrid"></div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn" onclick="saveMediaEntry()">Save Entry</button>
       <button class="btn btn-danger" onclick="removeMediaEntry()">Remove from List</button>
     </div>
+  </div>
+</div>
+
+<!-- SEE MORE MODAL -->
+<div class="modal-overlay" id="seeMoreModal" onclick="closeSeeMoreModal(event)">
+  <div class="modal" style="max-width: 900px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <div class="modal-title" id="seeMoreModalTitle">Explore Category</div>
+      <button class="close-btn" onclick="document.getElementById('seeMoreModal').style.display='none'">&times;</button>
+    </div>
+    <div class="media-grid" id="seeMoreGrid" style="max-height: 70vh; overflow-y: auto; padding: 5px;"></div>
   </div>
 </div>
 
@@ -292,7 +326,10 @@
                 chapters
                 volumes
                 format
+                status
                 averageScore
+                genres
+                description
                 title { english romaji }
                 coverImage { extraLarge }
                 siteUrl
@@ -310,10 +347,7 @@
         body: JSON.stringify({ query, variables: { username: activeUsername, type } })
       });
       const data = await res.json();
-      if (!data.data || !data.data.MediaListCollection) {
-        document.getElementById(isAnime ? 'animeStatusMsg' : 'mangaStatusMsg').innerText = 'Failed to load list or user not found.';
-        return;
-      }
+      if (!data.data || !data.data.MediaListCollection) return;
 
       let entries = [];
       data.data.MediaListCollection.lists.forEach(l => {
@@ -389,14 +423,15 @@
 
       const card = document.createElement('div');
       card.className = 'media-card';
+      card.onclick = () => inspectMediaById(item.id);
       card.innerHTML = `
-        <div class="media-poster-wrap" onclick='openMediaModal(${JSON.stringify(item)})'>
+        <div class="media-poster-wrap">
           <img src="${item.coverImage.extraLarge}" alt="${title}">
           <div class="media-badge">${item.format || 'TV'}</div>
         </div>
         <div class="media-info">
-          <div class="media-title" onclick='openMediaModal(${JSON.stringify(item)})' title="${title}">${title}</div>
-          <div class="card-quick-actions">
+          <div class="media-title" title="${title}">${title}</div>
+          <div class="card-quick-actions" onclick="event.stopPropagation()">
             <button class="quick-btn" onclick='adjustProgress(${item.id}, -1, "${type}")'>-</button>
             <div class="progress-text">${item.progress}/${maxUnits} ${unitLabel}</div>
             <button class="quick-btn" onclick='adjustProgress(${item.id}, 1, "${type}")'>+</button>
@@ -426,16 +461,82 @@
     renderListGrid(type);
   }
 
+  async function inspectMediaById(mediaId) {
+    // Fetch full details including relations & description
+    const query = `
+      query ($id: Int) {
+        Media(id: $id) {
+          id type episodes chapters volumes format status averageScore genres description
+          title { english romaji }
+          coverImage { extraLarge }
+          relations {
+            edges {
+              relationType
+              node {
+                id type format
+                title { english romaji }
+                coverImage { large }
+              }
+            }
+          }
+        }
+      }
+    `;
+    try {
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { id: mediaId } })
+      });
+      const data = await res.json();
+      if (data.data && data.data.Media) {
+        openMediaModal(data.data.Media);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   function openMediaModal(item) {
     selectedMediaCache = item;
     document.getElementById('modalTitle').innerText = item.title.english || item.title.romaji;
-    document.getElementById('modalImg').src = item.coverImage.extraLarge;
+    document.getElementById('modalImg').src = item.coverImage.extraLarge || item.coverImage.large;
     document.getElementById('modalFormat').innerText = item.format || 'N/A';
-    document.getElementById('modalStatus').innerText = item.status;
+    document.getElementById('modalMediaStatus').innerText = item.status || 'N/A';
     document.getElementById('modalScore').innerText = (item.averageScore || 'N/A') + '%';
-    document.getElementById('editListStatus').value = item.status;
-    document.getElementById('editProgressInput').value = item.progress;
+    document.getElementById('modalGenres').innerText = (item.genres || []).join(', ') || 'N/A';
+    document.getElementById('modalDesc').innerHTML = item.description || 'No description available.';
     document.getElementById('modalProgressLabel').innerText = item.type === 'ANIME' ? 'Episodes Progress:' : 'Chapters Progress:';
+
+    // Check if user already has it in lists
+    const existing = [...rawAnimeEntries, ...rawMangaEntries].find(x => x.id === item.id);
+    document.getElementById('editListStatus').value = existing ? existing.status : 'PLANNING';
+    document.getElementById('editProgressInput').value = existing ? existing.progress : 0;
+
+    // Render Relations (Sequels, Prequels, Spin-offs)
+    const relContainer = document.getElementById('relationsContainer');
+    const relGrid = document.getElementById('relationsGrid');
+    relGrid.innerHTML = '';
+
+    if (item.relations && item.relations.edges && item.relations.edges.length > 0) {
+      relContainer.style.display = 'block';
+      item.relations.edges.forEach(edge => {
+        const relNode = edge.node;
+        const relTitle = relNode.title.english || relNode.title.romaji;
+        const card = document.createElement('div');
+        card.className = 'relation-card';
+        card.onclick = () => inspectMediaById(relNode.id);
+        card.innerHTML = `
+          <img src="${relNode.coverImage.large}" alt="">
+          <p title="${relTitle}">${relTitle}</p>
+          <span>${edge.relationType}</span>
+        `;
+        relGrid.appendChild(card);
+      });
+    } else {
+      relContainer.style.display = 'none';
+    }
+
     document.getElementById('mediaModal').style.display = 'flex';
   }
 
@@ -444,13 +545,30 @@
     const newStatus = document.getElementById('editListStatus').value;
     const newProg = parseInt(document.getElementById('editProgressInput').value) || 0;
 
-    const list = selectedMediaCache.type === 'ANIME' ? rawAnimeEntries : rawMangaEntries;
-    const entry = list.find(x => x.id === selectedMediaCache.id);
+    const isAnime = selectedMediaCache.type === 'ANIME';
+    let list = isAnime ? rawAnimeEntries : rawMangaEntries;
+    let entry = list.find(x => x.id === selectedMediaCache.id);
+
     if (entry) {
       entry.status = newStatus;
       entry.progress = newProg;
-      renderListGrid(selectedMediaCache.type);
+    } else {
+      // Add new entry locally
+      list.push({
+        id: selectedMediaCache.id,
+        listEntryId: Date.now(),
+        type: selectedMediaCache.type,
+        status: newStatus,
+        progress: newProg,
+        score: 0,
+        episodes: selectedMediaCache.episodes,
+        chapters: selectedMediaCache.chapters,
+        format: selectedMediaCache.format,
+        title: selectedMediaCache.title,
+        coverImage: selectedMediaCache.coverImage
+      });
     }
+    renderListGrid(isAnime ? 'ANIME' : 'MANGA');
     document.getElementById('mediaModal').style.display = 'none';
   }
 
@@ -470,9 +588,9 @@
   async function loadExploreData() {
     const query = `
       query {
-        trending: Page(page: 1, perPage: 10) { media(sort: TRENDING_DESC, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } siteUrl episodes chapters } }
-        popular: Page(page: 1, perPage: 10) { media(sort: POPULARITY_DESC, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } siteUrl episodes chapters } }
-        upcoming: Page(page: 1, perPage: 10) { media(sort: POPULARITY_DESC, status: NOT_YET_RELEASED, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } siteUrl episodes chapters } }
+        trending: Page(page: 1, perPage: 10) { media(sort: TRENDING_DESC, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } } }
+        popular: Page(page: 1, perPage: 10) { media(sort: POPULARITY_DESC, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } } }
+        upcoming: Page(page: 1, perPage: 10) { media(sort: POPULARITY_DESC, status: NOT_YET_RELEASED, type: ANIME, isAdult: false) { id type format averageScore title { english romaji } coverImage { extraLarge } } }
       }
     `;
     try {
@@ -499,13 +617,14 @@
       const title = item.title.english || item.title.romaji;
       const card = document.createElement('div');
       card.className = 'media-card';
+      card.onclick = () => inspectMediaById(item.id);
       card.innerHTML = `
-        <div class="media-poster-wrap" onclick='openExploreInspect(${JSON.stringify(item)})'>
+        <div class="media-poster-wrap">
           <img src="${item.coverImage.extraLarge}" alt="${title}">
           <div class="media-badge">${item.format || 'TV'}</div>
         </div>
         <div class="media-info">
-          <div class="media-title" onclick='openExploreInspect(${JSON.stringify(item)})' title="${title}">${title}</div>
+          <div class="media-title" title="${title}">${title}</div>
           <div class="media-footer">
             <span>Score: ${item.averageScore || 'N/A'}%</span>
           </div>
@@ -515,14 +634,58 @@
     });
   }
 
+  async function openSeeMore(title, sortField, type, statusFilter = null) {
+    document.getElementById('seeMoreModalTitle').innerText = title;
+    document.getElementById('seeMoreModal').style.display = 'flex';
+    const grid = document.getElementById('seeMoreGrid');
+    grid.innerHTML = '<div style="color:var(--text-muted); text-align:center; grid-column:1/-1; padding:20px;">Loading category...</div>';
+
+    let statusArg = statusFilter ? `, status: ${statusFilter}` : '';
+    const query = `
+      query {
+        Page(page: 1, perPage: 30) {
+          media(sort: ${sortField}, type: ${type}, isAdult: false ${statusArg}) {
+            id type format averageScore title { english romaji } coverImage { extraLarge }
+          }
+        }
+      }
+    `;
+    const res = await fetch('https://graphql.anilist.co', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    const data = await res.json();
+    grid.innerHTML = '';
+    if (data.data && data.data.Page.media) {
+      data.data.Page.media.forEach(item => {
+        const itemTitle = item.title.english || item.title.romaji;
+        const card = document.createElement('div');
+        card.className = 'media-card';
+        card.onclick = () => { document.getElementById('seeMoreModal').style.display='none'; inspectMediaById(item.id); };
+        card.innerHTML = `
+          <div class="media-poster-wrap">
+            <img src="${item.coverImage.extraLarge}" alt="${itemTitle}">
+            <div class="media-badge">${item.format || 'TV'}</div>
+          </div>
+          <div class="media-info">
+            <div class="media-title" title="${itemTitle}">${itemTitle}</div>
+            <div class="media-footer"><span>${item.averageScore || 'N/A'}%</span></div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+  }
+
   async function executeGlobalSearch() {
     const term = document.getElementById('exploreSearchInput').value.trim();
     if (!term) return;
     const query = `
       query ($search: String) {
-        Page(page: 1, perPage: 12) {
+        Page(page: 1, perPage: 16) {
           media(search: $search, isAdult: false) {
-            id type format averageScore title { english romaji } coverImage { extraLarge } siteUrl episodes chapters
+            id type format averageScore title { english romaji } coverImage { extraLarge }
           }
         }
       }
@@ -540,8 +703,9 @@
         const title = item.title.english || item.title.romaji;
         const card = document.createElement('div');
         card.className = 'media-card';
+        card.onclick = () => inspectMediaById(item.id);
         card.innerHTML = `
-          <div class="media-poster-wrap" onclick='openExploreInspect(${JSON.stringify(item)})'>
+          <div class="media-poster-wrap">
             <img src="${item.coverImage.extraLarge}" alt="${title}">
             <div class="media-badge">${item.format || 'TV'}</div>
           </div>
@@ -557,13 +721,6 @@
     }
   }
 
-  function openExploreInspect(item) {
-    // Add item to local collection or inspect
-    item.status = 'PLANNING';
-    item.progress = 0;
-    openMediaModal(item);
-  }
-
   async function fetchUserProfileAndStats() {
     const query = `
       query ($username: String) {
@@ -571,8 +728,21 @@
           name
           avatar { large }
           statistics {
-            anime { count episodesWatched meanScore }
-            manga { count chaptersRead volumesRead meanScore }
+            anime {
+              count
+              episodesWatched
+              minutesWatched
+              meanScore
+              standardDeviation
+              statuses { count status }
+            }
+            manga {
+              count
+              chaptersRead
+              volumesRead
+              meanScore
+              statuses { count status }
+            }
           }
         }
       }
@@ -585,8 +755,13 @@
     const data = await res.json();
     if (data.data && data.data.User) {
       const u = data.data.User;
-      const aStats = u.statistics.anime;
-      const mStats = u.statistics.manga;
+      const a = u.statistics.anime;
+      const m = u.statistics.manga;
+
+      let plannedAnimeCount = 0;
+      a.statuses.forEach(s => { if (s.status === 'PLANNING') plannedAnimeCount = s.count; });
+      let plannedMangaCount = 0;
+      m.statuses.forEach(s => { if (s.status === 'PLANNING') plannedMangaCount = s.count; });
       
       document.getElementById('profileContent').innerHTML = `
         <div class="profile-container">
@@ -598,12 +773,15 @@
             </div>
           </div>
           <div class="stats-grid">
-            <div class="stat-card"><h3>${aStats.count}</h3><p>Anime Entries</p></div>
-            <div class="stat-card"><h3>${(aStats.episodesWatched / 24).toFixed(1)} Days</h3><p>Anime Watch Time</p></div>
-            <div class="stat-card"><h3>${aStats.meanScore}%</h3><p>Anime Mean Score</p></div>
-            <div class="stat-card"><h3>${mStats.count}</h3><p>Manga Entries</p></div>
-            <div class="stat-card"><h3>${mStats.chaptersRead}</h3><p>Chapters Read</p></div>
-            <div class="stat-card"><h3>${mStats.meanScore}%</h3><p>Manga Mean Score</p></div>
+            <div class="stat-card"><h3>${a.count}</h3><p>Anime Entries</p></div>
+            <div class="stat-card"><h3>${a.episodesWatched}</h3><p>Total Episodes Watched</p></div>
+            <div class="stat-card"><h3>${plannedAnimeCount}</h3><p>Anime Planned</p></div>
+            <div class="stat-card"><h3>${(a.episodesWatched / 24).toFixed(1)} Days</h3><p>Anime Watch Time</p></div>
+            <div class="stat-card"><h3>${a.meanScore}%</h3><p>Anime Mean Score</p></div>
+            <div class="stat-card"><h3>${m.count}</h3><p>Manga Entries</p></div>
+            <div class="stat-card"><h3>${m.chaptersRead}</h3><p>Chapters Read</p></div>
+            <div class="stat-card"><h3>${plannedMangaCount}</h3><p>Manga Planned</p></div>
+            <div class="stat-card"><h3>${m.meanScore}%</h3><p>Manga Mean Score</p></div>
           </div>
         </div>
       `;
@@ -611,9 +789,11 @@
   }
 
   function closeModal(e) {
-    if (e.target.id === 'mediaModal') {
-      document.getElementById('mediaModal').style.display = 'none';
-    }
+    if (e.target.id === 'mediaModal') document.getElementById('mediaModal').style.display = 'none';
+  }
+
+  function closeSeeMoreModal(e) {
+    if (e.target.id === 'seeMoreModal') document.getElementById('seeMoreModal').style.display = 'none';
   }
 </script>
 </body>

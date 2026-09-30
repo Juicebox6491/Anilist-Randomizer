@@ -85,7 +85,6 @@
 
     .status-msg { text-align: center; color: var(--text-muted); padding: 30px; font-size: 0.95rem; }
 
-    /* Modal Styling */
     .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
     .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; width: 100%; max-width: 700px; max-height: 90vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
     .modal-header { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -354,7 +353,7 @@
         l.entries.forEach(e => {
           entries.push({
             listEntryId: e.id,
-            status: e.status,
+            status: e.status, // Fixed: properly mapping personal list status (CURRENT, COMPLETED, etc.)
             progress: e.progress,
             score: e.score,
             ...e.media
@@ -462,7 +461,6 @@
   }
 
   async function inspectMediaById(mediaId) {
-    // Fetch full details including relations & description
     const query = `
       query ($id: Int) {
         Media(id: $id) {
@@ -508,12 +506,10 @@
     document.getElementById('modalDesc').innerHTML = item.description || 'No description available.';
     document.getElementById('modalProgressLabel').innerText = item.type === 'ANIME' ? 'Episodes Progress:' : 'Chapters Progress:';
 
-    // Check if user already has it in lists
     const existing = [...rawAnimeEntries, ...rawMangaEntries].find(x => x.id === item.id);
     document.getElementById('editListStatus').value = existing ? existing.status : 'PLANNING';
     document.getElementById('editProgressInput').value = existing ? existing.progress : 0;
 
-    // Render Relations (Sequels, Prequels, Spin-offs)
     const relContainer = document.getElementById('relationsContainer');
     const relGrid = document.getElementById('relationsGrid');
     relGrid.innerHTML = '';
@@ -553,7 +549,6 @@
       entry.status = newStatus;
       entry.progress = newProg;
     } else {
-      // Add new entry locally
       list.push({
         id: selectedMediaCache.id,
         listEntryId: Date.now(),

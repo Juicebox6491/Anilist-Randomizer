@@ -149,6 +149,7 @@
       gap: 10px;
       border-right: 1px solid #1e2c3e;
       padding-right: 12px;
+      position: relative;
     }
     .filter-group:last-child {
       border-right: none;
@@ -159,6 +160,67 @@
       margin-bottom: 1rem;
       color: #3db4f2;
       min-height: 1.2rem;
+    }
+
+    /* Custom AniList-Style Format Dropdown */
+    .format-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .format-dropdown-btn {
+      background: #0b1622;
+      color: #edf1f5;
+      border: 1px solid #2e51a2;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .format-dropdown-btn:after {
+      content: '▲';
+      font-size: 0.65rem;
+      transition: transform 0.2s;
+    }
+    .format-dropdown.open .format-dropdown-btn:after {
+      transform: rotate(180deg);
+    }
+    .format-dropdown-menu {
+      display: none;
+      position: absolute;
+      top: 110%;
+      left: 0;
+      background-color: #151f2e;
+      border: 1px solid #1e2c3e;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+      border-radius: 6px;
+      padding: 6px 0;
+      z-index: 100;
+      min-width: 140px;
+      text-align: left;
+    }
+    .format-dropdown.open .format-dropdown-menu {
+      display: block;
+    }
+    .format-dropdown-item {
+      padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #9fadbd;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .format-dropdown-item:hover {
+      background-color: #1e2c3e;
+      color: #edf1f5;
+    }
+    .format-dropdown-item input[type="checkbox"] {
+      cursor: pointer;
     }
 
     /* Randomizer Card */
@@ -449,15 +511,21 @@
         </label>
       </div>
 
-      <!-- Format Filter (TV & Movie Checkboxes) -->
+      <!-- AniList-Style Multi-Select Format Dropdown -->
       <div class="filter-group">
         <span style="color: #edf1f5; font-weight: 600;">Format:</span>
-        <label>
-          <input type="checkbox" id="formatTV" onchange="applyFiltersAndReshuffle()" /> TV Shows
-        </label>
-        <label>
-          <input type="checkbox" id="formatMovie" onchange="applyFiltersAndReshuffle()" /> Movies
-        </label>
+        <div class="format-dropdown" id="formatDropdown">
+          <button class="format-dropdown-btn" type="button" onclick="toggleFormatDropdown(event)">Format</button>
+          <div class="format-dropdown-menu">
+            <label class="format-dropdown-item"><input type="checkbox" value="TV" onchange="applyFiltersAndReshuffle()" /> TV</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="TV_SHORT" onchange="applyFiltersAndReshuffle()" /> TV Short</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="MOVIE" onchange="applyFiltersAndReshuffle()" /> Movie</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="SPECIAL" onchange="applyFiltersAndReshuffle()" /> Special</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="OVA" onchange="applyFiltersAndReshuffle()" /> OVA</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="ONA" onchange="applyFiltersAndReshuffle()" /> ONA</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="MUSIC" onchange="applyFiltersAndReshuffle()" /> Music</label>
+          </div>
+        </div>
       </div>
 
       <!-- Exact Episode Slider (0 to 100+) -->
@@ -465,6 +533,21 @@
         <label for="epSlider" style="color: #edf1f5; font-weight: 600;">Episodes:</label>
         <input type="range" id="epSlider" min="0" max="100" value="0" step="1" oninput="updateSliderLabel(this.value)" onchange="applyFiltersAndReshuffle()" />
         <span id="epSliderValue" style="color: #3db4f2; font-weight: bold; min-width: 55px;">Any</span>
+      </div>
+
+      <!-- Minimum Score Dropdown -->
+      <div class="filter-group">
+        <label>
+          Min Score:
+          <select id="scoreFilter" onchange="applyFiltersAndReshuffle()">
+            <option value="0">Any Score</option>
+            <option value="50">50%+</option>
+            <option value="60">60%+</option>
+            <option value="70">70%+</option>
+            <option value="80">80%+</option>
+            <option value="90">90%+</option>
+          </select>
+        </label>
       </div>
 
       <div class="filter-group">
@@ -475,6 +558,14 @@
             <option value="FINISHED">Finished Airing Only</option>
             <option value="RELEASING">Currently Airing Only</option>
           </select>
+        </label>
+      </div>
+
+      <!-- Adult Toggle (Starts Unchecked) -->
+      <div class="filter-group">
+        <label for="includeAdult">
+          <input type="checkbox" id="includeAdult" onchange="applyFiltersAndReshuffle()" />
+          Include Adult
         </label>
       </div>
 
@@ -561,6 +652,18 @@
       label.innerText = `${num} ep${num > 1 ? 's' : ''}`;
     }
   }
+
+  function toggleFormatDropdown(e) {
+    e.stopPropagation();
+    document.getElementById('formatDropdown').classList.toggle('open');
+  }
+
+  document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('formatDropdown');
+    if (dropdown && !dropdown.contains(e.target)) {
+      dropdown.classList.remove('open');
+    }
+  });
 
   function getDislikedIds() {
     const data = localStorage.getItem('anilist_rec_disliked');
@@ -743,49 +846,51 @@
     if (!isListLoaded || masterList.length === 0) return;
 
     const includeCompleted = document.getElementById('includeCompleted').checked;
+    const includeAdult = document.getElementById('includeAdult').checked;
+    const minScore = parseInt(document.getElementById('scoreFilter').value) || 0;
     const statusFilter = document.getElementById('statusFilter').value;
     const excludeGenreRaw = document.getElementById('excludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
 
-    // Format Filter Flags
-    const allowTV = document.getElementById('formatTV').checked;
-    const allowMovie = document.getElementById('formatMovie').checked;
+    // Selected Formats Array
+    const selectedFormatInputs = document.querySelectorAll('#formatDropdown input[type="checkbox"]:checked');
+    const selectedFormats = Array.from(selectedFormatInputs).map(cb => cb.value);
 
     // Episode Count Target
     const targetEpisodes = parseInt(document.getElementById('epSlider').value);
 
     let filtered = masterList.filter(item => {
-      // 1. User List Status (Planning vs Completed)
+      // 1. Adult Content Check
+      if (!includeAdult && item.isAdult) return false;
+
+      // 2. User List Status (Planning vs Completed)
       const isPlanning = item.userStatus === 'PLANNING';
       const isCompleted = item.userStatus === 'COMPLETED';
       if (!isPlanning && !(includeCompleted && isCompleted)) return false;
 
-      // 2. Anime Release Status
-      if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
-
-      // 3. Format Filtering (Default: Show Everything if both/neither checked)
-      const isTV = item.format === 'TV' || item.format === 'TV_SHORT' || item.format === 'ONA';
-      const isMovie = item.format === 'MOVIE';
-
-      if (allowTV && !allowMovie) {
-        // Only TV Shows
-        if (!isTV) return false;
-      } else if (!allowTV && allowMovie) {
-        // Only Movies
-        if (!isMovie) return false;
+      // 3. Minimum Score Filter
+      if (minScore > 0) {
+        const score = item.averageScore || 0;
+        if (score < minScore) return false;
       }
 
-      // 4. Episode Count Slider Matching
+      // 4. Anime Release Status
+      if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
+
+      // 5. Format Dropdown Filter (Default: Show everything if none checked)
+      if (selectedFormats.length > 0) {
+        if (!item.format || !selectedFormats.includes(item.format)) return false;
+      }
+
+      // 6. Episode Count Slider Matching
       const eps = item.episodes || 0;
       if (targetEpisodes === 100) {
-        // 100+ Episodes
         if (eps < 100) return false;
       } else if (targetEpisodes > 0) {
-        // Exact Match
         if (eps !== targetEpisodes) return false;
       }
 
-      // 5. Excluded Genres
+      // 7. Excluded Genres
       if (excludeGenres.length > 0 && item.genres) {
         const itemGenres = item.genres.map(g => g.toLowerCase());
         if (excludeGenres.some(ex => itemGenres.includes(ex))) return false;

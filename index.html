@@ -14,8 +14,6 @@
       --text-main: #fefae0;
       --text-muted: #b7b7a4;
       --border: #332d29;
-      --current-badge: #588157;
-      --planning-badge: #dda15e;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background-color: var(--bg-main); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; align-items: center; padding: 10px; }
@@ -65,7 +63,21 @@
     .card-footer-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 6px; }
     .status-indicator { text-transform: uppercase; font-weight: 700; font-size: 0.68rem; }
 
-    /* Modal Styling matching App Details View */
+    /* Explore & Search layouts */
+    .explore-section-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .search-row { display: flex; gap: 8px; margin-bottom: 20px; }
+
+    /* Profile / Stats layout */
+    .profile-card-container { background: #181513; border: 1px solid var(--border); border-radius: 12px; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+    .profile-header-flex { display: flex; align-items: center; gap: 16px; }
+    .profile-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); background: var(--bg-input); }
+    .profile-name { font-size: 1.4rem; font-weight: 700; color: #fff; }
+    .profile-stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+    .stat-box { background: #241f1c; padding: 16px; border-radius: 10px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 4px; }
+    .stat-number { font-size: 1.5rem; font-weight: 800; color: #faedcd; }
+    .stat-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Modal Styling */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 1000; padding: 15px; }
     .modal-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 680px; max-height: 90vh; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.7); }
     .modal-top { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -146,18 +158,26 @@
 
     <!-- EXPLORE TAB -->
     <div id="exploreTab" class="tab-view">
-      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-        <input type="text" id="exploreSearchBox" placeholder="Search database..." />
+      <div class="search-row">
+        <input type="text" id="exploreSearchBox" placeholder="Search anime & manga database..." onkeydown="if(event.key==='Enter') runGlobalSearch()" />
         <button class="btn" onclick="runGlobalSearch()">Search</button>
       </div>
-      <div id="exploreResultsGrid" class="media-grid" style="margin-bottom: 20px;"></div>
-      <div style="font-size: 0.95rem; font-weight: 700; color: var(--accent); margin-bottom: 10px;">🔥 Trending This Season</div>
-      <div id="trendingGrid" class="media-grid"></div>
+      
+      <div id="exploreDynamicResultsContainer" style="display:none; margin-bottom: 24px;">
+        <div class="explore-section-title">🔍 Search Results</div>
+        <div id="exploreResultsGrid" class="media-grid"></div>
+      </div>
+
+      <div class="explore-section-title">🔥 Trending This Season</div>
+      <div id="trendingGrid" class="media-grid" style="margin-bottom: 24px;"></div>
+
+      <div class="explore-section-title">⭐ All-Time Popular</div>
+      <div id="popularGrid" class="media-grid"></div>
     </div>
 
     <!-- PROFILE TAB -->
     <div id="profileTab" class="tab-view">
-      <div id="profileStatsContent" class="status-msg">Connect an account to view user profile analytics.</div>
+      <div id="profileStatsContent" class="status-msg">Connect an account using the banner above to load user metrics and profile analytics.</div>
     </div>
 
   </div>
@@ -231,7 +251,7 @@
       fetchUserLists('MANGA'),
       fetchProfileStats()
     ]);
-    loadTrendingPreviews();
+    loadExploreFeeds();
   }
 
   async function fetchUserLists(mediaType) {
@@ -281,7 +301,7 @@
         listGroup.entries.forEach(entry => {
           extractedEntries.push({
             listEntryId: entry.id,
-            listStatus: entry.status, // Strictly user list status (CURRENT, PLANNING, COMPLETED, etc.)
+            listStatus: entry.status,
             progress: entry.progress,
             score: entry.score,
             ...entry.media
@@ -323,7 +343,6 @@
     const rawData = isAnime ? animeCollection : mangaCollection;
     const currentFilter = isAnime ? activeAnimeFilter : activeMangaFilter;
 
-    // Filter precisely by user list status token
     const filtered = rawData.filter(item => {
       if (currentFilter === 'ALL') return true;
       return item.listStatus === currentFilter;
@@ -424,7 +443,6 @@
     document.getElementById('modalListStatusSelect').value = existingMatch ? existingMatch.listStatus : 'PLANNING';
     document.getElementById('modalProgressInput').value = existingMatch ? existingMatch.progress : 0;
 
-    // Render status distribution pills matching screenshot design
     const distContainer = document.getElementById('statusDistContainer');
     const pillsRow = document.getElementById('distPillsRow');
     pillsRow.innerHTML = '';
@@ -495,11 +513,16 @@
     document.getElementById('detailModal').style.display = 'none';
   }
 
-  async function loadTrendingPreviews() {
+  async function loadExploreFeeds() {
     const query = `
       query {
-        Page(page: 1, perPage: 12) {
+        trending: Page(page: 1, perPage: 12) {
           media(sort: TRENDING_DESC, type: ANIME, isAdult: false) {
+            id type format averageScore title { english romaji } coverImage { extraLarge }
+          }
+        }
+        popular: Page(page: 1, perPage: 12) {
+          media(sort: POPULARITY_DESC, type: ANIME, isAdult: false) {
             id type format averageScore title { english romaji } coverImage { extraLarge }
           }
         }
@@ -512,72 +535,71 @@
         body: JSON.stringify({ query })
       });
       const json = await res.json();
-      if (json.data && json.data.Page.media) {
-        const grid = document.getElementById('trendingGrid');
-        grid.innerHTML = '';
-        json.data.Page.media.forEach(item => {
-          const title = item.title.english || item.title.romaji;
-          const card = document.createElement('div');
-          card.className = 'media-card';
-          card.onclick = () => openMediaDetails(item.id);
-          card.innerHTML = `
-            <div class="poster-wrap">
-              <img src="${item.coverImage.extraLarge}" alt="${title}">
-              <div class="format-tag">${item.format || 'TV'}</div>
-            </div>
-            <div class="media-info">
-              <div class="media-title" title="${title}">${title}</div>
-              <div class="card-footer-row"><span>Score: ${item.averageScore || 0}%</span></div>
-            </div>
-          `;
-          grid.appendChild(card);
-        });
+      if (json.data) {
+        renderCardGridSnippet(json.data.trending.media, 'trendingGrid');
+        renderCardGridSnippet(json.data.popular.media, 'popularGrid');
       }
     } catch (err) {
       console.error(err);
     }
   }
 
+  function renderCardGridSnippet(mediaList, containerId) {
+    const grid = document.getElementById(containerId);
+    grid.innerHTML = '';
+    mediaList.forEach(item => {
+      const title = item.title.english || item.title.romaji;
+      const card = document.createElement('div');
+      card.className = 'media-card';
+      card.onclick = () => openMediaDetails(item.id);
+      card.innerHTML = `
+        <div class="poster-wrap">
+          <img src="${item.coverImage.extraLarge}" alt="${title}">
+          <div class="format-tag">${item.format || 'TV'}</div>
+        </div>
+        <div class="media-info">
+          <div class="media-title" title="${title}">${title}</div>
+          <div class="card-footer-row"><span>Score: ${item.averageScore || 0}%</span></div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
   async function runGlobalSearch() {
     const term = document.getElementById('exploreSearchBox').value.trim();
-    if (!term) return;
+    const container = document.getElementById('exploreDynamicResultsContainer');
+    if (!term) {
+      container.style.display = 'none';
+      return;
+    }
+    
     const query = `
       query ($search: String) {
-        Page(page: 1, perPage: 12) {
+        Page(page: 1, perPage: 16) {
           media(search: $search, isAdult: false) {
             id type format averageScore title { english romaji } coverImage { extraLarge }
           }
         }
       }
     `;
-    const res = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { search: term } })
-    });
-    const json = await res.json();
-    const grid = document.getElementById('exploreResultsGrid');
-    grid.innerHTML = '';
-    if (json.data && json.data.Page.media.length) {
-      json.data.Page.media.forEach(item => {
-        const title = item.title.english || item.title.romaji;
-        const card = document.createElement('div');
-        card.className = 'media-card';
-        card.onclick = () => openMediaDetails(item.id);
-        card.innerHTML = `
-          <div class="poster-wrap">
-            <img src="${item.coverImage.extraLarge}" alt="${title}">
-            <div class="format-tag">${item.format || 'TV'}</div>
-          </div>
-          <div class="media-info">
-            <div class="media-title" title="${title}">${title}</div>
-            <div class="card-footer-row"><span>Score: ${item.averageScore || 0}%</span></div>
-          </div>
-        `;
-        grid.appendChild(card);
+    try {
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { search: term } })
       });
-    } else {
-      grid.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-muted); text-align:center;">No results found.</div>`;
+      const json = await res.json();
+      container.style.display = 'block';
+      const grid = document.getElementById('exploreResultsGrid');
+      grid.innerHTML = '';
+      if (json.data && json.data.Page.media.length) {
+        renderCardGridSnippet(json.data.Page.media, 'exploreResultsGrid');
+      } else {
+        grid.innerHTML = `<div style="grid-column: 1/-1; color: var(--text-muted); text-align:center; padding: 20px;">No matching results found.</div>`;
+      }
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -586,47 +608,80 @@
       query ($username: String) {
         User(name: $username) {
           name
+          avatar { large }
           statistics {
-            anime { count episodesWatched meanScore }
-            manga { count chaptersRead meanScore }
+            anime { count episodesWatched meanScore minutesWatched }
+            manga { count chaptersRead meanScore volumesRead }
           }
         }
       }
     `;
-    const res = await fetch('https://graphql.anilist.co', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query, variables: { username: loggedInUser } })
-    });
-    const json = await res.json();
-    if (json.data && json.data.User) {
-      const u = json.data.User;
-      const a = u.statistics.anime;
-      const m = u.statistics.manga;
-      document.getElementById('profileStatsContent').innerHTML = `
-        <div style="background: #181513; border: 1px solid var(--border); border-radius: 10px; padding: 20px; display:flex; flex-direction:column; gap:14px;">
-          <h2 style="color:var(--accent);">${u.name}'s Tracker Profile</h2>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px;">
-            <div style="background:#241f1c; padding:12px; border-radius:8px; border:1px solid var(--border);">
-              <div style="font-size:1.3rem; font-weight:700; color:#faedcd;">${a.count}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Total Anime Entries</div>
+    try {
+      const res = await fetch('https://graphql.anilist.co', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, variables: { username: loggedInUser } })
+      });
+      const json = await res.json();
+      if (json.data && json.data.User) {
+        const u = json.data.User;
+        const a = u.statistics.anime;
+        const m = u.statistics.manga;
+        
+        document.getElementById('profileStatsContent').innerHTML = `
+          <div class="profile-card-container">
+            <div class="profile-header-flex">
+              <img src="${u.avatar.large}" class="profile-avatar" alt="Avatar">
+              <div>
+                <div class="profile-name">${u.name}</div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 2px;">AniList Profile Analytics Dashboard</div>
+              </div>
             </div>
-            <div style="background:#241f1c; padding:12px; border-radius:8px; border:1px solid var(--border);">
-              <div style="font-size:1.3rem; font-weight:700; color:#faedcd;">${a.episodesWatched}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Episodes Watched</div>
+            
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-top: 4px;">📺 Anime Metrics</div>
+            <div class="profile-stats-grid">
+              <div class="stat-box">
+                <div class="stat-number">${a.count}</div>
+                <div class="stat-label">Total Anime Entries</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${a.episodesWatched}</div>
+                <div class="stat-label">Episodes Watched</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${Math.round(a.minutesWatched / 60)} hrs</div>
+                <div class="stat-label">Time Watched</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${a.meanScore}%</div>
+                <div class="stat-label">Mean Score</div>
+              </div>
             </div>
-            <div style="background:#241f1c; padding:12px; border-radius:8px; border:1px solid var(--border);">
-              <div style="font-size:1.3rem; font-weight:700; color:#faedcd;">${m.count}</div>
-              <div style="font-size:1.3rem; font-weight:700; color:#faedcd;">${m.count}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Total Manga Entries</div>
-            </div>
-            <div style="background:#241f1c; padding:12px; border-radius:8px; border:1px solid var(--border);">
-              <div style="font-size:1.3rem; font-weight:700; color:#faedcd;">${m.chaptersRead}</div>
-              <div style="font-size:0.75rem; color:var(--text-muted);">Chapters Read</div>
+
+            <div style="font-size: 0.9rem; font-weight: 700; color: var(--accent); margin-top: 4px;">📖 Manga Metrics</div>
+            <div class="profile-stats-grid">
+              <div class="stat-box">
+                <div class="stat-number">${m.count}</div>
+                <div class="stat-label">Total Manga Entries</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${m.chaptersRead}</div>
+                <div class="stat-label">Chapters Read</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${m.volumesRead}</div>
+                <div class="stat-label">Volumes Read</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-number">${m.meanScore}%</div>
+                <div class="stat-label">Mean Score</div>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
+      }
+    } catch (err) {
+      console.error(err);
     }
   }
 
@@ -635,6 +690,9 @@
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
+    if (tabId === 'exploreTab' && !document.getElementById('trendingGrid').hasChildNodes()) {
+      loadExploreFeeds();
+    }
   }
 
   function handleOutsideModalClick(e) {

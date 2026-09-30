@@ -308,26 +308,6 @@
       background-color: #27ae60;
       color: #fff;
     }
-    .rec-match-badge {
-      background-color: #e67e22;
-      color: #fff;
-      font-size: 0.8rem;
-      font-weight: bold;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      text-align: center;
-    }
-    .studio-badge {
-      background-color: #8e44ad;
-      color: #fff;
-      font-size: 0.75rem;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 4px;
-      margin-bottom: 6px;
-      text-align: center;
-    }
     .genres {
       display: flex;
       flex-wrap: wrap;
@@ -425,33 +405,10 @@
       margin-bottom: 8px;
       text-align: center;
     }
-    .based-on {
-      font-size: 0.75rem;
-      color: #8ba0b5;
-      margin-top: 6px;
-      line-height: 1.3;
-      margin-bottom: 10px;
-    }
-    .card-actions {
-      margin-top: auto;
+    .load-more-container {
+      margin-top: 20px;
       display: flex;
-      gap: 6px;
-    }
-    .dislike-btn {
-      width: 100%;
-      background-color: #394e6b;
-      color: #e74c3c;
-      border: 1px solid #e74c3c;
-      padding: 6px 10px;
-      font-size: 0.75rem;
-      font-weight: bold;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    .dislike-btn:hover {
-      background-color: #c0392b;
-      color: #fff;
+      justify-content: center;
     }
 
     @media (max-width: 768px) {
@@ -515,7 +472,7 @@
       <div class="filter-group">
         <span style="color: #edf1f5; font-weight: 600;">Format:</span>
         <div class="format-dropdown" id="formatDropdown">
-          <button class="format-dropdown-btn" type="button" onclick="toggleFormatDropdown(event)">Format</button>
+          <button class="format-dropdown-btn" type="button" onclick="toggleFormatDropdown(event, 'formatDropdown')">Format</button>
           <div class="format-dropdown-menu">
             <label class="format-dropdown-item"><input type="checkbox" value="TV" onchange="applyFiltersAndReshuffle()" /> TV</label>
             <label class="format-dropdown-item"><input type="checkbox" value="TV_SHORT" onchange="applyFiltersAndReshuffle()" /> TV Short</label>
@@ -561,7 +518,7 @@
         </label>
       </div>
 
-      <!-- Adult Toggle (Starts Unchecked) -->
+      <!-- Adult Toggle -->
       <div class="filter-group">
         <label for="includeAdult">
           <input type="checkbox" id="includeAdult" onchange="applyFiltersAndReshuffle()" />
@@ -607,10 +564,41 @@
   <div id="airingTab" class="tab-content">
     <div class="input-group">
       <input type="text" id="airingUserInput" placeholder="Enter username or profile URL (Optional)" value="" />
-      <button class="action-btn" onclick="fetchAiringList()">Fetch Airing Anime</button>
+      <button class="action-btn" onclick="fetchAiringList(1)">Fetch Airing Anime</button>
     </div>
+
+    <div class="options">
+      <!-- Airing Format Dropdown -->
+      <div class="filter-group">
+        <span style="color: #edf1f5; font-weight: 600;">Format:</span>
+        <div class="format-dropdown" id="airingFormatDropdown">
+          <button class="format-dropdown-btn" type="button" onclick="toggleFormatDropdown(event, 'airingFormatDropdown')">Format</button>
+          <div class="format-dropdown-menu">
+            <label class="format-dropdown-item"><input type="checkbox" value="TV" onchange="fetchAiringList(1)" /> TV</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="TV_SHORT" onchange="fetchAiringList(1)" /> TV Short</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="MOVIE" onchange="fetchAiringList(1)" /> Movie</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="SPECIAL" onchange="fetchAiringList(1)" /> Special</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="OVA" onchange="fetchAiringList(1)" /> OVA</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="ONA" onchange="fetchAiringList(1)" /> ONA</label>
+            <label class="format-dropdown-item"><input type="checkbox" value="MUSIC" onchange="fetchAiringList(1)" /> Music</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Airing Adult Toggle -->
+      <div class="filter-group">
+        <label for="airingIncludeAdult">
+          <input type="checkbox" id="airingIncludeAdult" onchange="fetchAiringList(1)" />
+          Include Adult (18+)
+        </label>
+      </div>
+    </div>
+
     <div id="airingStatus" class="status">Click Fetch to view currently airing anime.</div>
     <div id="airingGrid" class="media-grid"></div>
+    <div class="load-more-container">
+      <button id="loadMoreAiringBtn" class="action-btn secondary-btn" style="display:none;" onclick="loadNextAiringPage()">Load More</button>
+    </div>
   </div>
 
   <!-- TAB 3: RECOMMENDATIONS -->
@@ -641,6 +629,11 @@
   
   let globalRecPool = [];
 
+  // Airing Pagination State
+  let airingCurrentPage = 1;
+  let airingHasNextPage = false;
+  let currentAiringUsername = "";
+
   function updateSliderLabel(val) {
     const label = document.getElementById('epSliderValue');
     const num = parseInt(val);
@@ -653,16 +646,18 @@
     }
   }
 
-  function toggleFormatDropdown(e) {
+  function toggleFormatDropdown(e, dropdownId) {
     e.stopPropagation();
-    document.getElementById('formatDropdown').classList.toggle('open');
+    const dropdown = document.getElementById(dropdownId);
+    if (dropdown) dropdown.classList.toggle('open');
   }
 
   document.addEventListener('click', function(e) {
-    const dropdown = document.getElementById('formatDropdown');
-    if (dropdown && !dropdown.contains(e.target)) {
-      dropdown.classList.remove('open');
-    }
+    document.querySelectorAll('.format-dropdown').forEach(dropdown => {
+      if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('open');
+      }
+    });
   });
 
   function getDislikedIds() {
@@ -852,37 +847,29 @@
     const excludeGenreRaw = document.getElementById('excludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
 
-    // Selected Formats Array
     const selectedFormatInputs = document.querySelectorAll('#formatDropdown input[type="checkbox"]:checked');
     const selectedFormats = Array.from(selectedFormatInputs).map(cb => cb.value);
 
-    // Episode Count Target
     const targetEpisodes = parseInt(document.getElementById('epSlider').value);
 
     let filtered = masterList.filter(item => {
-      // 1. Adult Content Check
       if (!includeAdult && item.isAdult) return false;
 
-      // 2. User List Status (Planning vs Completed)
       const isPlanning = item.userStatus === 'PLANNING';
       const isCompleted = item.userStatus === 'COMPLETED';
       if (!isPlanning && !(includeCompleted && isCompleted)) return false;
 
-      // 3. Minimum Score Filter
       if (minScore > 0) {
         const score = item.averageScore || 0;
         if (score < minScore) return false;
       }
 
-      // 4. Anime Release Status
       if (statusFilter !== 'ALL' && item.status !== statusFilter) return false;
 
-      // 5. Format Dropdown Filter (Default: Show everything if none checked)
       if (selectedFormats.length > 0) {
         if (!item.format || !selectedFormats.includes(item.format)) return false;
       }
 
-      // 6. Episode Count Slider Matching
       const eps = item.episodes || 0;
       if (targetEpisodes === 100) {
         if (eps < 100) return false;
@@ -890,7 +877,6 @@
         if (eps !== targetEpisodes) return false;
       }
 
-      // 7. Excluded Genres
       if (excludeGenres.length > 0 && item.genres) {
         const itemGenres = item.genres.map(g => g.toLowerCase());
         if (excludeGenres.some(ex => itemGenres.includes(ex))) return false;
@@ -998,17 +984,27 @@
   }
 
   // --- TAB 2: CURRENTLY AIRING LOGIC ---
-  async function fetchAiringList() {
+  async function fetchAiringList(page = 1) {
     const inputEl = document.getElementById('airingUserInput');
     const statusEl = document.getElementById('airingStatus');
     const gridEl = document.getElementById('airingGrid');
+    const loadMoreBtn = document.getElementById('loadMoreAiringBtn');
     
     let input = inputEl.value.trim();
     const match = input ? input.match(/anilist\.co\/user\/([^/]+)/) : null;
     const username = match ? match[1] : input;
 
-    statusEl.innerText = username ? `Fetching airing titles for ${username}...` : 'Fetching trending airing anime...';
-    gridEl.innerHTML = '';
+    currentAiringUsername = username;
+    airingCurrentPage = page;
+
+    if (page === 1) {
+      gridEl.innerHTML = '';
+      statusEl.innerText = username ? `Fetching airing titles for ${username}...` : 'Fetching currently airing anime...';
+    }
+
+    const includeAdult = document.getElementById('airingIncludeAdult').checked;
+    const selectedFormatInputs = document.querySelectorAll('#airingFormatDropdown input[type="checkbox"]:checked');
+    const selectedFormats = Array.from(selectedFormatInputs).map(cb => cb.value);
 
     let query, variables;
 
@@ -1021,6 +1017,8 @@
                 media {
                   id
                   siteUrl
+                  format
+                  isAdult
                   title { english romaji }
                   coverImage { extraLarge }
                   genres
@@ -1035,11 +1033,16 @@
       variables = { username };
     } else {
       query = `
-        query {
-          Page(page: 1, perPage: 24) {
-            media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC) {
+        query ($page: Int, $perPage: Int, $format_in: [MediaFormat], $isAdult: Boolean) {
+          Page(page: $page, perPage: $perPage) {
+            pageInfo {
+              hasNextPage
+            }
+            media(type: ANIME, status: RELEASING, sort: POPULARITY_DESC, format_in: $format_in, isAdult: $isAdult) {
               id
               siteUrl
+              format
+              isAdult
               title { english romaji }
               coverImage { extraLarge }
               genres
@@ -1049,7 +1052,15 @@
           }
         }
       `;
-      variables = {};
+      variables = { 
+        page: page, 
+        perPage: 50, 
+        isAdult: includeAdult ? undefined : false 
+      };
+
+      if (selectedFormats.length > 0) {
+        variables.format_in = selectedFormats;
+      }
     }
 
     try {
@@ -1072,55 +1083,66 @@
             });
           });
         }
+        airingHasNextPage = false;
       } else {
         if (result.data && result.data.Page) {
           items = result.data.Page.media;
+          airingHasNextPage = result.data.Page.pageInfo.hasNextPage;
         }
       }
 
-      const seen = new Set();
-      items = items.filter(item => {
-        if (seen.has(item.id)) return false;
-        seen.add(item.id);
-        return true;
-      });
-
-      items.sort((a, b) => {
-        const timeA = a.nextAiringEpisode ? a.nextAiringEpisode.timeUntilAiring : Infinity;
-        const timeB = b.nextAiringEpisode ? b.nextAiringEpisode.timeUntilAiring : Infinity;
-        return timeA - timeB;
-      });
-
-      if (items.length === 0) {
-        statusEl.innerText = 'No currently airing anime found.';
-        return;
+      // Filter client-side for user list queries
+      if (username) {
+        items = items.filter(item => {
+          if (!includeAdult && item.isAdult) return false;
+          if (selectedFormats.length > 0 && (!item.format || !selectedFormats.includes(item.format))) return false;
+          return true;
+        });
       }
 
-      statusEl.innerText = `Showing ${items.length} currently airing anime:`;
+      renderAiringItems(items, page === 1);
 
-      items.forEach(anime => {
-        const card = document.createElement('div');
-        card.className = 'grid-card';
+      if (airingHasNextPage && !username) {
+        loadMoreBtn.style.display = 'inline-block';
+      } else {
+        loadMoreBtn.style.display = 'none';
+      }
 
-        const title = anime.title.english || anime.title.romaji;
-        const countdown = anime.nextAiringEpisode 
-          ? `Ep ${anime.nextAiringEpisode.episode} in ${formatCountdown(anime.nextAiringEpisode.timeUntilAiring)}`
-          : 'Airing Details N/A';
-
-        card.innerHTML = `
-          <a href="${anime.siteUrl}" target="_blank">
-            <img src="${anime.coverImage.extraLarge}" alt="${title}">
-          </a>
-          <div class="grid-card-content">
-            <div class="airing-timer">📺 ${countdown}</div>
-            <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
-          </div>
-        `;
-        gridEl.appendChild(card);
-      });
+      statusEl.innerText = items.length === 0 && page === 1 ? 'No matching airing anime found.' : '';
 
     } catch (err) {
-      statusEl.innerText = 'Error fetching airing list.';
+      statusEl.innerText = 'Error loading airing anime.';
+    }
+  }
+
+  function renderAiringItems(items, resetGrid) {
+    const gridEl = document.getElementById('airingGrid');
+    if (resetGrid) gridEl.innerHTML = '';
+
+    items.forEach(anime => {
+      const card = document.createElement('div');
+      card.className = 'grid-card';
+
+      const title = anime.title.english || anime.title.romaji;
+      let timerText = 'Currently Airing';
+      if (anime.nextAiringEpisode) {
+        timerText = `Ep ${anime.nextAiringEpisode.episode} in ${formatCountdown(anime.nextAiringEpisode.timeUntilAiring)}`;
+      }
+
+      card.innerHTML = `
+        <img src="${anime.coverImage.extraLarge}" alt="${title}">
+        <div class="grid-card-content">
+          <div class="airing-timer">📺 ${timerText}</div>
+          <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
+        </div>
+      `;
+      gridEl.appendChild(card);
+    });
+  }
+
+  function loadNextAiringPage() {
+    if (airingHasNextPage) {
+      fetchAiringList(airingCurrentPage + 1);
     }
   }
 
@@ -1128,40 +1150,33 @@
   async function fetchRecommendations() {
     const inputEl = document.getElementById('recUserInput');
     const statusEl = document.getElementById('recStatus');
-    const shuffleBtn = document.getElementById('shuffleRecBtn');
-
     let input = inputEl.value.trim();
+
     if (!input) return alert('Please enter a username or profile URL.');
 
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
 
-    statusEl.innerText = `Scanning completed watch history for ${username}...`;
-    document.getElementById('recGrid').innerHTML = '';
-    shuffleBtn.style.display = 'none';
+    statusEl.innerText = `Fetching recommendations based on ${username}'s list...`;
 
     const query = `
       query ($username: String) {
         MediaListCollection(userName: $username, type: ANIME, forceSingleCompletedList: true) {
           lists {
-            isCustomList
             entries {
-              status
+              score
               media {
                 id
                 title { english romaji }
-                recommendations(sort: RATING_DESC, perPage: 25) {
+                recommendations(perPage: 5) {
                   nodes {
                     mediaRecommendation {
                       id
-                      siteUrl
                       title { english romaji }
                       coverImage { extraLarge }
-                      averageScore
+                      siteUrl
                       genres
-                      studios(isMain: true) {
-                        nodes { name }
-                      }
+                      isAdult
                     }
                   }
                 }
@@ -1180,141 +1195,89 @@
       });
 
       const result = await response.json();
+      globalRecPool = [];
 
-      if (result.errors || !result.data || !result.data.MediaListCollection) {
-        statusEl.innerText = 'User not found or list is private.';
-        return;
-      }
-
-      const userWatchedSet = new Set();
-      const completedEntries = [];
-
-      result.data.MediaListCollection.lists.forEach(list => {
-        list.entries.forEach(entry => {
-          if (entry.media) {
-            userWatchedSet.add(entry.media.id);
-            if (entry.status === 'COMPLETED') {
-              completedEntries.push(entry.media);
-            }
-          }
-        });
-      });
-
-      if (completedEntries.length === 0) {
-        statusEl.innerText = 'No completed anime found on this account.';
-        return;
-      }
-
-      const recMap = new Map();
-
-      completedEntries.forEach(sourceMedia => {
-        const sourceTitle = sourceMedia.title.english || sourceMedia.title.romaji;
-        if (sourceMedia.recommendations && sourceMedia.recommendations.nodes) {
-          sourceMedia.recommendations.nodes.forEach(node => {
-            const recMedia = node.mediaRecommendation;
-            if (recMedia && !userWatchedSet.has(recMedia.id)) {
-              if (recMap.has(recMedia.id)) {
-                const existing = recMap.get(recMedia.id);
-                existing.count += 1;
-                existing.sources.push(sourceTitle);
-              } else {
-                recMap.set(recMedia.id, {
-                  media: recMedia,
-                  count: 1,
-                  sources: [sourceTitle]
-                });
-              }
+      if (result.data && result.data.MediaListCollection) {
+        result.data.MediaListCollection.lists.forEach(list => {
+          list.entries.forEach(entry => {
+            if (entry.score >= 7 && entry.media.recommendations) {
+              entry.media.recommendations.nodes.forEach(node => {
+                if (node.mediaRecommendation) {
+                  globalRecPool.push({
+                    rec: node.mediaRecommendation,
+                    basedOn: entry.media.title.english || entry.media.title.romaji
+                  });
+                }
+              });
             }
           });
-        }
-      });
-
-      globalRecPool = Array.from(recMap.values());
+        });
+      }
 
       if (globalRecPool.length === 0) {
-        statusEl.innerText = 'No new recommendations found in the pool.';
+        statusEl.innerText = 'No recommendations found. Try rating more shows 7+ on AniList!';
         return;
       }
 
-      shuffleBtn.style.display = 'inline-block';
-      renderRecommendations(false);
+      document.getElementById('shuffleRecBtn').style.display = 'inline-block';
+      renderRecommendations(true);
 
     } catch (err) {
-      statusEl.innerText = 'Error loading recommendations.';
+      statusEl.innerText = 'Error fetching recommendations.';
     }
   }
 
   function renderRecommendations(shouldShuffle = false) {
-    const statusEl = document.getElementById('recStatus');
     const gridEl = document.getElementById('recGrid');
-    const dislikedIds = getDislikedIds();
+    const statusEl = document.getElementById('recStatus');
+    gridEl.innerHTML = '';
 
     const excludeGenreRaw = document.getElementById('recExcludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
+    const dislikedIds = getDislikedIds();
 
-    gridEl.innerHTML = '';
+    let pool = [...globalRecPool];
+    if (shouldShuffle) pool = shuffle(pool);
 
-    let itemsToDisplay = globalRecPool.filter(item => {
-      if (dislikedIds.includes(item.media.id)) return false;
+    const seenIds = new Set();
+    let count = 0;
 
-      if (excludeGenres.length > 0 && item.media.genres) {
-        const itemGenres = item.media.genres.map(g => g.toLowerCase());
-        if (excludeGenres.some(ex => itemGenres.includes(ex))) return false;
+    pool.forEach(item => {
+      const anime = item.rec;
+      if (!anime || seenIds.has(anime.id) || dislikedIds.includes(anime.id)) return;
+
+      if (excludeGenres.length > 0 && anime.genres) {
+        const itemGenres = anime.genres.map(g => g.toLowerCase());
+        if (excludeGenres.some(ex => itemGenres.includes(ex))) return;
       }
 
-      return true;
-    });
+      seenIds.add(anime.id);
+      count++;
 
-    if (shouldShuffle) {
-      itemsToDisplay = shuffle(itemsToDisplay).slice(0, 24);
-      statusEl.innerText = `Showing 24 randomly shuffled recommendations:`;
-    } else {
-      itemsToDisplay.sort((a, b) => {
-        if (b.count !== a.count) return b.count - a.count;
-        return (b.media.averageScore || 0) - (a.media.averageScore || 0);
-      });
-      itemsToDisplay = itemsToDisplay.slice(0, 24);
-      statusEl.innerText = `Top recommendations out of ${itemsToDisplay.length} candidates:`;
-    }
-
-    if (itemsToDisplay.length === 0) {
-      statusEl.innerText = 'All items filtered out or marked as Not Interested.';
-      return;
-    }
-
-    itemsToDisplay.forEach(item => {
+      const title = anime.title.english || anime.title.romaji;
       const card = document.createElement('div');
       card.className = 'grid-card';
 
-      const anime = item.media;
-      const title = anime.title.english || anime.title.romaji;
-      const sourceList = item.sources.slice(0, 2).join(', ') + (item.sources.length > 2 ? ` +${item.sources.length - 2} more` : '');
-      
-      const studioName = (anime.studios && anime.studios.nodes && anime.studios.nodes.length > 0)
-        ? anime.studios.nodes[0].name
-        : null;
-
       card.innerHTML = `
-        <a href="${anime.siteUrl}" target="_blank">
-          <img src="${anime.coverImage.extraLarge}" alt="${title}">
-        </a>
+        <img src="${anime.coverImage.extraLarge}" alt="${title}">
         <div class="grid-card-content">
-          <div class="rec-match-badge">🔥 Recommended by ${item.count} show${item.count > 1 ? 's' : ''}</div>
-          ${studioName ? `<div class="studio-badge">🎨 Studio: ${studioName}</div>` : ''}
           <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
-          <div class="based-on"><strong>Because you watched:</strong><br>${sourceList}</div>
+          <div class="based-on">💡 Based on your score for <strong>${item.basedOn}</strong></div>
           <div class="card-actions">
-            <button class="dislike-btn" onclick="hideRecommendation(${anime.id})">🚫 Not Interested</button>
+            <button class="dislike-btn" onclick="hideRecommendation(${anime.id}, this)">Hide</button>
           </div>
         </div>
       `;
       gridEl.appendChild(card);
     });
+
+    statusEl.innerText = count > 0 ? `Showing ${count} recommendations` : 'No recommendations match your filters.';
   }
 
-  function hideRecommendation(animeId) {
-    addDislikedId(animeId);
-    renderRecommendations(false);
+  function hideRecommendation(id, btnElement) {
+    addDislikedId(id);
+    const card = btnElement.closest('.grid-card');
+    if (card) card.remove();
   }
 </script>
 

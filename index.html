@@ -617,7 +617,7 @@
       <button class="action-btn danger-btn" style="padding: 4px 10px; font-size:0.75rem;" onclick="clearDislikedList()">Reset Hidden List (<span id="dislikedCount">0</span>)</button>
     </div>
 
-    <div id="recStatus" class="status">Enter your username to scan your watched history for recommendations.</div>
+    <div id="recStatus" class="status">Enter your username to scan your completed history for recommendations.</div>
     <div id="recGrid" class="media-grid"></div>
   </div>
 </div>
@@ -628,6 +628,8 @@
   let isListLoaded = false;
   
   let globalRecPool = [];
+  let recCurrentIndex = 0;
+  const recPageSize = 15;
 
   // Airing Pagination State
   let airingCurrentPage = 1;
@@ -1151,13 +1153,18 @@
     }
   }
 
-  // Infinite scroll trigger for Airing tab
+  // Infinite scroll trigger for Airing & Recommendations tabs
   window.addEventListener('scroll', () => {
-    const airingTabActive = document.getElementById('airingTab').classList.contains('active');
-    if (!airingTabActive || !airingHasNextPage || isFetchingAiring) return;
-
     if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
-      loadNextAiringPage();
+      const airingTabActive = document.getElementById('airingTab').classList.contains('active');
+      if (airingTabActive && airingHasNextPage && !isFetchingAiring) {
+        loadNextAiringPage();
+      }
+
+      const recTabActive = document.getElementById('recommendationsTab').classList.contains('active');
+      if (recTabActive && globalRecPool.length > 0) {
+        renderMoreRecommendationsBatch();
+      }
     }
   });
 
@@ -1172,18 +1179,17 @@
     const match = input.match(/anilist\.co\/user\/([^/]+)/);
     const username = match ? match[1] : input;
 
-    statusEl.innerText = `Fetching recommendations based on ${username}'s list...`;
+    statusEl.innerText = `Fetching recommendations from ${username}'s complete watched list...`;
 
     const query = `
       query ($username: String) {
-        MediaListCollection(userName: $username, type: ANIME, forceSingleCompletedList: true) {
+        MediaListCollection(userName: $username, type: ANIME, status: COMPLETED) {
           lists {
             entries {
-              score
               media {
                 id
                 title { english romaji }
-                recommendations(perPage: 5) {
+                recommendations(perPage: 10) {
                   nodes {
                     mediaRecommendation {
                       id
@@ -1211,26 +1217,38 @@
 
       const result = await response.json();
       globalRecPool = [];
+      const userCompletedIds = new Set();
+      const recMap = new Map();
 
-      if (result.data && result.data.MediaListCollection) {
+      if (result.data && result.data.MediaListCollection && result.data.MediaListCollection.lists) {
         result.data.MediaListCollection.lists.forEach(list => {
           list.entries.forEach(entry => {
-            if (entry.score >= 7 && entry.media.recommendations) {
-              entry.media.recommendations.nodes.forEach(node => {
-                if (node.mediaRecommendation) {
-                  globalRecPool.push({
-                    rec: node.mediaRecommendation,
-                    basedOn: entry.media.title.english || entry.media.title.romaji
-                  });
-                }
-              });
+            if (entry.media) {
+              userCompletedIds.add(entry.media.id);
+              if (entry.media.recommendations && entry.media.recommendations.nodes) {
+                entry.media.recommendations.nodes.forEach(node => {
+                  const recAnime = node.mediaRecommendation;
+                  if (recAnime) {
+                    // Track unique recommendations and link which show it came from
+                    if (!recMap.has(recAnime.id)) {
+                      recMap.set(recAnime.id, {
+                        rec: recAnime,
+                        basedOn: entry.media.title.english || entry.media.title.romaji
+                      });
+                    }
+                  }
+                });
+              }
             }
           });
         });
       }
 
+      // Filter out any recommendations the user has already completed
+      globalRecPool = Array.from(recMap.values()).filter(item => !userCompletedIds.has(item.rec.id));
+
       if (globalRecPool.length === 0) {
-        statusEl.innerText = 'No recommendations found. Try rating more shows 7+ on AniList!';
+        statusEl.innerText = 'No recommendations found from your completed list.';
         return;
       }
 
@@ -1243,32 +1261,38 @@
   }
 
   function renderRecommendations(shouldShuffle = false) {
+    if (shouldShuffle) {
+      globalRecPool = shuffle(globalRecPool);
+    }
+    recCurrentIndex = 0;
+    document.getElementById('recGrid').innerHTML = '';
+    renderMoreRecommendationsBatch();
+  }
+
+  function renderMoreRecommendationsBatch() {
     const gridEl = document.getElementById('recGrid');
     const statusEl = document.getElementById('recStatus');
-    gridEl.innerHTML = '';
 
     const excludeGenreRaw = document.getElementById('recExcludeGenre').value.toLowerCase();
     const excludeGenres = excludeGenreRaw.split(',').map(g => g.trim()).filter(g => g.length > 0);
     const dislikedIds = getDislikedIds();
 
-    let pool = [...globalRecPool];
-    if (shouldShuffle) pool = shuffle(pool);
+    let addedCount = 0;
+    const targetBatchSize = recPageSize;
+    const currentTotalDisplayed = gridEl.children.length;
 
-    const seenIds = new Set();
-    let count = 0;
-
-    pool.forEach(item => {
+    while (recCurrentIndex < globalRecPool.length && addedCount < targetBatchSize) {
+      const item = globalRecPool[recCurrentIndex++];
       const anime = item.rec;
-      if (!anime || seenIds.has(anime.id) || dislikedIds.includes(anime.id)) return;
+
+      if (!anime || dislikedIds.includes(anime.id)) continue;
 
       if (excludeGenres.length > 0 && anime.genres) {
         const itemGenres = anime.genres.map(g => g.toLowerCase());
-        if (excludeGenres.some(ex => itemGenres.includes(ex))) return;
+        if (excludeGenres.some(ex => itemGenres.includes(ex))) continue;
       }
 
-      seenIds.add(anime.id);
-      count++;
-
+      addedCount++;
       const title = anime.title.english || anime.title.romaji;
       const card = document.createElement('div');
       card.className = 'grid-card';
@@ -1277,22 +1301,29 @@
         <img src="${anime.coverImage.extraLarge}" alt="${title}">
         <div class="grid-card-content">
           <h3><a href="${anime.siteUrl}" target="_blank">${title}</a></h3>
-          <div class="based-on">💡 Based on your score for <strong>${item.basedOn}</strong></div>
-          <div class="card-actions">
-            <button class="dislike-btn" onclick="hideRecommendation(${anime.id}, this)">Hide</button>
+          <div class="based-on" style="font-size: 0.8rem; color: #8ba0b5; margin-bottom: 8px;">💡 Based on <strong>${item.basedOn}</strong></div>
+          <div class="card-actions" style="margin-top: auto;">
+            <button class="action-btn danger-btn" style="padding: 4px 10px; font-size: 0.75rem;" onclick="hideRecommendation(${anime.id}, this)">Hide</button>
           </div>
         </div>
       `;
       gridEl.appendChild(card);
-    });
+    }
 
-    statusEl.innerText = count > 0 ? `Showing ${count} recommendations` : 'No recommendations match your filters.';
+    const totalShown = currentTotalDisplayed + addedCount;
+    statusEl.innerText = totalShown > 0 ? `Showing ${totalShown} recommendations` : 'No recommendations match your filters.';
   }
 
   function hideRecommendation(id, btnElement) {
     addDislikedId(id);
     const card = btnElement.closest('.grid-card');
-    if (card) card.remove();
+    if (card) {
+      card.remove();
+      // Update count or pull next item if needed
+      const statusEl = document.getElementById('recStatus');
+      const currentShown = document.getElementById('recGrid').children.length;
+      statusEl.innerText = `Showing ${currentShown} recommendations`;
+    }
   }
 </script>
 

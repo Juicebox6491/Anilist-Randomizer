@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AniList PTW & Hub</title>
+  <title>Anilist Hub</title>
   <style>
     * {
       box-sizing: border-box;
@@ -440,7 +440,7 @@
 <body>
 
 <div class="container">
-  <h1>AniList Hub</h1>
+  <h1>Anilist Hub</h1>
 
   <!-- Tab Buttons -->
   <div class="tab-bar">
@@ -633,6 +633,7 @@
   let airingCurrentPage = 1;
   let airingHasNextPage = false;
   let currentAiringUsername = "";
+  let isFetchingAiring = false;
 
   function updateSliderLabel(val) {
     const label = document.getElementById('epSliderValue');
@@ -985,6 +986,9 @@
 
   // --- TAB 2: CURRENTLY AIRING LOGIC ---
   async function fetchAiringList(page = 1) {
+    if (isFetchingAiring) return;
+    isFetchingAiring = true;
+
     const inputEl = document.getElementById('airingUserInput');
     const statusEl = document.getElementById('airingStatus');
     const gridEl = document.getElementById('airingGrid');
@@ -1054,7 +1058,7 @@
       `;
       variables = { 
         page: page, 
-        perPage: 50, 
+        perPage: 30, 
         isAdult: includeAdult ? undefined : false 
       };
 
@@ -1091,7 +1095,6 @@
         }
       }
 
-      // Filter client-side for user list queries
       if (username) {
         items = items.filter(item => {
           if (!includeAdult && item.isAdult) return false;
@@ -1112,6 +1115,8 @@
 
     } catch (err) {
       statusEl.innerText = 'Error loading airing anime.';
+    } finally {
+      isFetchingAiring = false;
     }
   }
 
@@ -1141,10 +1146,20 @@
   }
 
   function loadNextAiringPage() {
-    if (airingHasNextPage) {
+    if (airingHasNextPage && !isFetchingAiring) {
       fetchAiringList(airingCurrentPage + 1);
     }
   }
+
+  // Infinite scroll trigger for Airing tab
+  window.addEventListener('scroll', () => {
+    const airingTabActive = document.getElementById('airingTab').classList.contains('active');
+    if (!airingTabActive || !airingHasNextPage || isFetchingAiring) return;
+
+    if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 500) {
+      loadNextAiringPage();
+    }
+  });
 
   // --- TAB 3: RECOMMENDATIONS LOGIC ---
   async function fetchRecommendations() {
